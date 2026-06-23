@@ -46,16 +46,22 @@ export async function GET(
       if (res.ok) {
         const data = await res.json();
         if (data?.data?.items?.length) {
-          const candles = data.data.items.map(
-            (item: Record<string, number>) => ({
+          const candles = data.data.items
+            .filter(
+              (item: Record<string, number>) =>
+                typeof item.o === "number" &&
+                typeof item.h === "number" &&
+                typeof item.l === "number" &&
+                typeof item.c === "number"
+            )
+            .map((item: Record<string, number>) => ({
               time: item.unixTime,
               open: item.o,
               high: item.h,
               low: item.l,
               close: item.c,
-              volume: item.v,
-            })
-          );
+              volume: item.v ?? 0,
+            }));
           return NextResponse.json({ candles });
         }
       }

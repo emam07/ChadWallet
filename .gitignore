@@ -50,3 +50,7 @@ next-env.d.ts
 
 # Testing
 /coverage/
+
+
+# Markdown files
+*.md

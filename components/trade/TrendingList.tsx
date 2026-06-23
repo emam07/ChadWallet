@@ -79,7 +79,7 @@ export function TrendingList({
 
           return (
             <a
-              key={token.address ?? i}
+              key={`${token.address ?? ""}-${i}`}
               href={`/trade/${token.address}`}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 hover:bg-white/[0.04] transition-colors border-b border-white/[0.03] cursor-pointer",

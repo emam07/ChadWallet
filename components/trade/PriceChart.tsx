@@ -117,7 +117,15 @@ export function PriceChart({ address }: { address: string }) {
     if (!data?.candles || !seriesRef.current) return;
     const candles: Candle[] = data.candles;
 
-    const sorted = [...candles].sort((a, b) => a.time - b.time);
+    const sorted = [...candles]
+      .sort((a, b) => a.time - b.time)
+      .filter(
+        (c) =>
+          typeof c.open === "number" &&
+          typeof c.high === "number" &&
+          typeof c.low === "number" &&
+          typeof c.close === "number"
+      );
 
     seriesRef.current.candle.setData(
       sorted.map((c) => ({
