@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChadWallet — iOS Features</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; }
+
+    body {
+      background: #020617;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      background-image:
+        radial-gradient(ellipse at 30% 20%, rgba(16,185,129,0.06) 0%, transparent 55%),
+        radial-gradient(ellipse at 75% 80%, rgba(59,130,246,0.05) 0%, transparent 55%);
+    }
+
+    /* ── Phone Shell ── */
+    .phone-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Ambient glow behind the device */
+    .phone-wrap::before {
+      content: '';
+      position: absolute;
+      inset: -50px;
+      background: radial-gradient(ellipse at center,
+        rgba(16,185,129,0.10) 0%,
+        rgba(59,130,246,0.06) 35%,
+        transparent 70%);
+      border-radius: 50%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .phone-frame {
+      position: relative;
+      z-index: 1;
+      width: 393px;
+      height: 852px;
+      background: #050d1a;
+      border-radius: 54px;
+      border: 1.5px solid rgba(255,255,255,0.08);
+      box-shadow:
+        0 0 0 7px #0f1c2e,
+        0 0 0 9px rgba(255,255,255,0.04),
+        0 60px 120px rgba(0,0,0,0.85),
+        0 20px 40px rgba(0,0,0,0.6),
+        inset 0 0 80px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+
+    /* Dynamic Island */
+    .dynamic-island {
+      position: absolute;
+      top: 13px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 126px;
+      height: 37px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .dynamic-island .camera {
+      width: 12px;
+      height: 12px;
+      background: #141414;
+      border-radius: 50%;
+      border: 1px solid #1f1f1f;
+      position: relative;
+    }
+    .dynamic-island .camera::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      background: #0a1a2e;
+      border-radius: 50%;
+    }
+    .dynamic-island .faceid {
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid #2a2a2a;
+      border-radius: 3px;
+    }
+
+    /* Side hardware buttons */
+    .btn-right {
+      position: absolute; right: -3px; top: 185px;
+      width: 3px; height: 88px;
+      background: linear-gradient(180deg, #0f1c2e, #1e2d3f, #0f1c2e);
+      border-radius: 0 2px 2px 0;
+    }
+    .btn-l1 {
+      position: absolute; left: -3px; top: 152px;
+      width: 3px; height: 40px;
+      background: linear-gradient(180deg, #0f1c2e, #1e2d3f, #0f1c2e);
+      border-radius: 2px 0 0 2px;
+    }
+    .btn-l2 {
+      position: absolute; left: -3px; top: 206px;
+      width: 3px; height: 68px;
+      background: linear-gradient(180deg, #0f1c2e, #1e2d3f, #0f1c2e);
+      border-radius: 2px 0 0 2px;
+    }
+    .btn-l3 {
+      position: absolute; left: -3px; top: 286px;
+      width: 3px; height: 68px;
+      background: linear-gradient(180deg, #0f1c2e, #1e2d3f, #0f1c2e);
+      border-radius: 2px 0 0 2px;
+    }
+
+    /* Status bar */
+    .status-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 54px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 15px 28px 0;
+      z-index: 80;
+      pointer-events: none;
+    }
+
+    /* Home indicator */
+    .home-indicator {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 134px;
+      height: 5px;
+      background: rgba(255,255,255,0.28);
+      border-radius: 3px;
+      z-index: 100;
+    }
+
+    /* Scrollable viewport */
+    .phone-content {
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding-top: 62px;
+      padding-bottom: 90px;
+    }
+    .phone-content::-webkit-scrollbar { display: none; }
+
+    /* ── Glassmorphic Card ── */
+    .glass-card {
+      background: rgba(255,255,255,0.035);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    /* ── Hero gradient bg ── */
+    .hero-bg {
+      background:
+        radial-gradient(ellipse at 10% 0%, rgba(16,185,129,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 90% 30%, rgba(59,130,246,0.12) 0%, transparent 50%);
+    }
+
+    /* ── CTA Button ── */
+    .cta-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: linear-gradient(135deg, rgba(16,185,129,0.85) 0%, rgba(6,148,162,0.85) 50%, rgba(59,130,246,0.85) 100%);
+      box-shadow:
+        0 0 32px rgba(16,185,129,0.35),
+        0 0 64px rgba(16,185,129,0.12),
+        0 4px 24px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.25);
+      cursor: pointer;
+      transition: box-shadow 0.25s ease, transform 0.2s ease;
+    }
+    .cta-btn:hover {
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 44px rgba(16,185,129,0.5),
+        0 0 88px rgba(16,185,129,0.18),
+        0 6px 30px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .cta-icon-wrap {
+      width: 30px;
+      height: 30px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Animated shimmer badge text ── */
+    @keyframes shimmer-move {
+      0%   { background-position: -200% center; }
+      100% { background-position:  200% center; }
+    }
+    .shimmer-text {
+      background: linear-gradient(90deg, #10b981 0%, #38bdf8 33%, #a78bfa 66%, #10b981 100%);
+      background-size: 300% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer-move 3.5s linear infinite;
+    }
+
+    /* ── Dot pulse on badge ── */
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
+    .dot-pulse { animation: dot-pulse 1.8s ease-in-out infinite; }
+
+    /* ── Feature card accent colors ── */
+    .card-emerald { border-color: rgba(16,185,129,0.14); }
+    .card-emerald:hover { border-color: rgba(16,185,129,0.32); box-shadow: 0 0 28px rgba(16,185,129,0.07); }
+
+    .card-blue { border-color: rgba(59,130,246,0.14); }
+    .card-blue:hover { border-color: rgba(59,130,246,0.32); box-shadow: 0 0 28px rgba(59,130,246,0.07); }
+
+    .card-violet { border-color: rgba(139,92,246,0.14); }
+    .card-violet:hover { border-color: rgba(139,92,246,0.32); box-shadow: 0 0 28px rgba(139,92,246,0.07); }
+
+    .card-orange { border-color: rgba(249,115,22,0.14); }
+    .card-orange:hover { border-color: rgba(249,115,22,0.32); box-shadow: 0 0 28px rgba(249,115,22,0.07); }
+
+    .card-cyan { border-color: rgba(6,182,212,0.14); }
+    .card-cyan:hover { border-color: rgba(6,182,212,0.32); box-shadow: 0 0 28px rgba(6,182,212,0.07); }
+
+    .card-pink { border-color: rgba(236,72,153,0.14); }
+    .card-pink:hover { border-color: rgba(236,72,153,0.32); box-shadow: 0 0 28px rgba(236,72,153,0.07); }
+
+    /* Icon badge backgrounds */
+    .ibg-emerald { background: linear-gradient(135deg,rgba(16,185,129,0.22),rgba(5,150,105,0.10)); border:1px solid rgba(16,185,129,0.35); }
+    .ibg-blue    { background: linear-gradient(135deg,rgba(59,130,246,0.22),rgba(37,99,235,0.10));  border:1px solid rgba(59,130,246,0.35); }
+    .ibg-violet  { background: linear-gradient(135deg,rgba(139,92,246,0.22),rgba(109,40,217,0.10)); border:1px solid rgba(139,92,246,0.35); }
+    .ibg-orange  { background: linear-gradient(135deg,rgba(249,115,22,0.22),rgba(234,88,12,0.10));  border:1px solid rgba(249,115,22,0.35); }
+    .ibg-cyan    { background: linear-gradient(135deg,rgba(6,182,212,0.22),rgba(8,145,178,0.10));   border:1px solid rgba(6,182,212,0.35); }
+    .ibg-pink    { background: linear-gradient(135deg,rgba(236,72,153,0.22),rgba(219,39,119,0.10)); border:1px solid rgba(236,72,153,0.35); }
+
+    /* Bottom divider line on cards */
+    .accent-line { height: 1px; margin-top: 14px; border-radius: 1px; }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      position: absolute;
+      bottom: 22px;
+      left: 14px;
+      right: 14px;
+      z-index: 90;
+    }
+    .bottom-nav-inner {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 10px 12px;
+      background: rgba(10,18,32,0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 26px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .nav-item span {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .nav-swap-btn {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg,#10b981,#3b82f6);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -12px;
+      box-shadow: 0 0 22px rgba(16,185,129,0.45), 0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    /* ── Scroll cue at hero bottom ── */
+    @keyframes bounce-down {
+      0%, 100% { transform: translateY(0); opacity: 0.5; }
+      50%       { transform: translateY(3px); opacity: 1; }
+    }
+    .scroll-cue { animation: bounce-down 1.8s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+  <div class="phone-wrap">
+
+    <!-- iPhone 15 Pro Frame -->
+    <div class="phone-frame">
+
+      <!-- Hardware side buttons -->
+      <div class="btn-right"></div>
+      <div class="btn-l1"></div>
+      <div class="btn-l2"></div>
+      <div class="btn-l3"></div>
+
+      <!-- Dynamic Island -->
+      <div class="dynamic-island">
+        <div class="camera"></div>
+        <div class="faceid"></div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <!-- Time -->
+        <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.92);letter-spacing:0.01em;">9:41</span>
+        <!-- Status icons -->
+        <div style="display:flex;align-items:center;gap:6px;padding-top:1px;">
+          <!-- Cellular signal -->
+          <svg width="17" height="12" viewBox="0 0 17 12" fill="none">
+            <rect x="0"   y="7.5" width="3" height="4.5" rx="0.8" fill="rgba(255,255,255,0.88)"/>
+            <rect x="4.5" y="5"   width="3" height="7"   rx="0.8" fill="rgba(255,255,255,0.88)"/>
+            <rect x="9"   y="2.5" width="3" height="9.5" rx="0.8" fill="rgba(255,255,255,0.88)"/>
+            <rect x="13.5" y="0"  width="3" height="12"  rx="0.8" fill="rgba(255,255,255,0.88)"/>
+          </svg>
+          <!-- WiFi -->
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+            <path d="M8 10.5 L8.8 9.5" stroke="rgba(255,255,255,0.88)" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M5.5 8Q6.7 6.7 8 6.7Q9.3 6.7 10.5 8" stroke="rgba(255,255,255,0.88)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+            <path d="M3 5.5Q5.2 3.2 8 3.2Q10.8 3.2 13 5.5" stroke="rgba(255,255,255,0.88)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+            <path d="M0.5 3Q3.8 -0.2 8 -0.2Q12.2 -0.2 15.5 3" stroke="rgba(255,255,255,0.88)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+          </svg>
+          <!-- Battery -->
+          <div style="display:flex;align-items:center;">
+            <div style="width:24px;height:12px;border:1.5px solid rgba(255,255,255,0.88);border-radius:3.5px;padding:2px;position:relative;">
+              <div style="width:88%;height:100%;background:rgba(255,255,255,0.88);border-radius:1.5px;"></div>
+            </div>
+            <div style="width:2px;height:6px;background:rgba(255,255,255,0.5);border-radius:0 1.5px 1.5px 0;margin-left:1px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Home Indicator -->
+      <div class="home-indicator"></div>
+
+      <!-- ══════════════════════════════════
+           SCROLLABLE CONTENT
+      ══════════════════════════════════ -->
+      <div class="phone-content">
+
+        <!-- ── SECTION 1: HERO HEADER ── -->
+        <div class="hero-bg" style="padding:18px 18px 22px;">
+
+          <!-- Accent badge -->
+          <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(16,185,129,0.09);border:1px solid rgba(16,185,129,0.28);border-radius:999px;padding:5px 13px;margin-bottom:16px;">
+            <div class="dot-pulse" style="width:7px;height:7px;background:#10b981;border-radius:50%;box-shadow:0 0 8px rgba(16,185,129,0.8);flex-shrink:0;"></div>
+            <span class="shimmer-text" style="font-size:10px;font-weight:900;letter-spacing:0.14em;">BUILT FOR WINNERS</span>
+          </div>
+
+          <!-- Subheading + Main Headline -->
+          <h1 style="font-size:30px;font-weight:900;color:#f8fafc;line-height:1.08;margin-bottom:10px;letter-spacing:-0.03em;">
+            Everything you need<br>
+            to <span style="background:linear-gradient(120deg,#10b981 0%,#38bdf8 55%,#818cf8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">dominate</span>
+          </h1>
+
+          <!-- Body description -->
+          <p style="font-size:13.5px;color:rgba(148,163,184,0.88);line-height:1.55;margin-bottom:22px;font-weight:400;max-width:320px;">
+            Professional-grade tools in a wallet that fits in your pocket.
+          </p>
+
+          <!-- Main Action Callout CTA -->
+          <button class="cta-btn">
+            <div class="cta-icon-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
+                <polygon points="6,3 20,12 6,21"/>
+              </svg>
+            </div>
+            <span style="font-size:14.5px;font-weight:700;color:#fff;letter-spacing:0.005em;flex:1;text-align:left;">See it in action</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+
+          <!-- Scroll cue -->
+          <div class="scroll-cue" style="display:flex;align-items:center;justify-content:center;margin-top:20px;gap:5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(100,116,139,0.6)" stroke-width="2" stroke-linecap="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+            <span style="font-size:9.5px;color:rgba(100,116,139,0.55);font-weight:500;letter-spacing:0.06em;">SCROLL TO EXPLORE</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(100,116,139,0.6)" stroke-width="2" stroke-linecap="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent);margin:0 18px;"></div>
+
+        <!-- Section label -->
+        <div style="padding:14px 20px 10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="height:1px;flex:1;background:rgba(255,255,255,0.06);"></div>
+            <span style="font-size:9.5px;font-weight:700;color:rgba(100,116,139,0.75);letter-spacing:0.14em;">CORE FEATURES</span>
+            <div style="height:1px;flex:1;background:rgba(255,255,255,0.06);"></div>
+          </div>
+        </div>
+
+        <!-- ── SECTION 2: FEATURE CARDS MATRIX ── -->
+        <div style="padding:0 13px 8px;display:flex;flex-direction:column;gap:9px;">
+
+          <!-- CARD 1 ── DISCOVER ── emerald -->
+          <div class="glass-card card-emerald" style="padding:16px;">
+            <div style="display:flex;align-items:flex-start;gap:13px;">
+              <!-- Icon -->
+              <div class="ibg-emerald" style="width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px rgba(16,185,129,0.2);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"/>
+                  <path d="m21 21-4.3-4.3"/>
+                  <path d="M11 8v6M8 11h6"/>
+                </svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <!-- Category tag -->
+                <div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;">
+                  <div style="width:5px;height:5px;background:#10b981;border-radius:50%;box-shadow:0 0 5px #10b981;flex-shrink:0;"></div>
+                  <span style="font-size:9.5px;font-weight:800;color:#10b981;letter-spacing:0.14em;">DISCOVER</span>
+                </div>
+                <h3 style="font-size:15.5px;font-weight:700;color:#f1f5f9;margin-bottom:5px;letter-spacing:-0.015em;line-height:1.2;">Spot Trends First</h3>
+                <p style="font-size:12px;color:rgba(148,163,184,0.82);line-height:1.55;font-weight:400;">Our AI scans the entire Solana ecosystem in real time to surface tokens gaining momentum before they go viral.</p>
+              </div>
+            </div>
+            <div class="accent-line" style="background:linear-gradient(90deg,rgba(16,185,129,0.4),rgba(16,185,129,0.05),transparent);"></div>
+          </div>
+
+          <!-- CARD 2 ── INTELLIGENCE ── blue -->
+          <div class="glass-card card-blue" style="padding:16px;">
+            <div style="display:flex;align-items:flex-start;gap:13px;">
+              <div class="ibg-blue" style="width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px rgba(59,130,246,0.2);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12h3l3 9 4.5-18L16 12h3l3-3"/>
+                </svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;">
+                  <div style="width:5px;height:5px;background:#3b82f6;border-radius:50%;box-shadow:0 0 5px #3b82f6;flex-shrink:0;"></div>
+                  <span style="font-size:9.5px;font-weight:800;color:#3b82f6;letter-spacing:0.14em;">INTELLIGENCE</span>
+                </div>
+                <h3 style="font-size:15.5px;font-weight:700;color:#f1f5f9;margin-bottom:5px;letter-spacing:-0.015em;line-height:1.2;">Follow Smart Money</h3>
+                <p style="font-size:12px;color:rgba(148,163,184,0.82);line-height:1.55;font-weight:400;">Track whale wallets, copy top trader positions, and get alerted the moment a legend makes a move.</p>
+              </div>
+            </div>
+            <div class="accent-line" style="background:linear-gradient(90deg,rgba(59,130,246,0.4),rgba(59,130,246,0.05),transparent);"></div>
+          </div>
+
+          <!-- CARD 3 ── EXECUTION ── violet -->
+          <div class="glass-card card-violet" style="padding:16px;">
+            <div style="display:flex;align-items:flex-start;gap:13px;">
+              <div class="ibg-violet" style="width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px rgba(139,92,246,0.2);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;">
+                  <div style="width:5px;height:5px;background:#8b5cf6;border-radius:50%;box-shadow:0 0 5px #8b5cf6;flex-shrink:0;"></div>
+                  <span style="font-size:9.5px;font-weight:800;color:#8b5cf6;letter-spacing:0.14em;">EXECUTION</span>
+                </div>
+                <h3 style="font-size:15.5px;font-weight:700;color:#f1f5f9;margin-bottom:5px;letter-spacing:-0.015em;line-height:1.2;">Trade Instantly</h3>
+                <p style="font-size:12px;color:rgba(148,163,184,0.82);line-height:1.55;font-weight:400;">Sub-second swap execution with Jito MEV protection. Never get front-run. Always get the best price.</p>
+              </div>
+            </div>
+            <div class="accent-line" style="background:linear-gradient(90deg,rgba(139,92,246,0.4),rgba(139,92,246,0.05),transparent);"></div>
+          </div>
+
+          <!-- CARD 4 ── ALERTS ── orange -->
+          <div class="glass-card card-orange" style="padding:16px;">
+            <div style="display:flex;align-items:flex-start;gap:13px;">
+              <div class="ibg-orange" style="width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px rgba(249,115,22,0.2);position:relative;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <!-- Live dot -->
+                <div style="position:absolute;top:6px;right:6px;width:7px;height:7px;background:#f97316;border-radius:50%;border:1.5px solid rgba(5,13,26,0.9);box-shadow:0 0 6px rgba(249,115,22,0.8);" class="dot-pulse"></div>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;">
+                  <div style="width:5px;height:5px;background:#f97316;border-radius:50%;box-shadow:0 0 5px #f97316;flex-shrink:0;"></div>
+                  <span style="font-size:9.5px;font-weight:800;color:#f97316;letter-spacing:0.14em;">ALERTS</span>
+                  <span style="font-size:8.5px;font-weight:700;color:rgba(249,115,22,0.65);background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:5px;padding:1px 5px;">LIVE</span>
+                </div>
+                <h3 style="font-size:15.5px;font-weight:700;color:#f1f5f9;margin-bottom:5px;letter-spacing:-0.015em;line-height:1.2;">Real-Time Alerts</h3>
+                <p style="font-size:12px;color:rgba(148,163,184,0.82);line-height:1.55;font-weight:400;">Price alerts, whale movements, new listings, and breakout notifications delivered in milliseconds.</p>
+              </div>
+            </div>
+            <div class="accent-line" style="background:linear-gradient(90deg,rgba(249,115,22,0.4),rgba(249,115,22,0.05),transparent);"></div>
+          </div>
+
+          <!-- CARD 5 ── SECURITY ── cyan -->
+          <div class="glass-card card-cyan" style="padding:16px;">
+            <div style="display:flex;align-items:flex-start;gap:13px;">
+              <div class="ibg-cyan" style="width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px rgba(6,182,212,0.2);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <polyline points="9,12 11,14 15,10"/>
+                </svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;">
+                  <div style="width:5px;height:5px;background:#06b6d4;border-radius:50%;box-shadow:0 0 5px #06b6d4;flex-shrink:0;"></div>
+                  <span style="font-size:9.5px;font-weight:800;color:#06b6d4;letter-spacing:0.14em;">SECURITY</span>
+                </div>
+                <h3 style="font-size:15.5px;font-weight:700;color:#f1f5f9;margin-bottom:5px;letter-spacing:-0.015em;line-height:1.2;">Secure Wallet</h3>
+                <p style="font-size:12px;color:rgba(148,163,184,0.82);line-height:1.55;font-weight:400;">Non-custodial by design. Your keys never leave your device. Military-grade encryption with biometric unlock.</p>
+              </div>
+            </div>
+            <div class="accent-line" style="background:linear-gradient(90deg,rgba(6,182,212,0.4),rgba(6,182,212,0.05),transparent);"></div>
+          </div>
+
+          <!-- CARD 6 ── PERFORMANCE ── pink -->
+          <div class="glass-card card-pink" style="padding:16px;">
+            <div style="display:flex;align-items:flex-start;gap:13px;">
+              <div class="ibg-pink" style="width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px rgba(236,72,153,0.2);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14"/>
+                  <path d="m12 5 7 7-7 7"/>
+                  <path d="m5 5 7 7-7 7" opacity="0.35"/>
+                </svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;">
+                  <div style="width:5px;height:5px;background:#ec4899;border-radius:50%;box-shadow:0 0 5px #ec4899;flex-shrink:0;"></div>
+                  <span style="font-size:9.5px;font-weight:800;color:#ec4899;letter-spacing:0.14em;">PERFORMANCE</span>
+                </div>
+                <h3 style="font-size:15.5px;font-weight:700;color:#f1f5f9;margin-bottom:5px;letter-spacing:-0.015em;line-height:1.2;">Lightning Fast Swaps</h3>
+                <p style="font-size:12px;color:rgba(148,163,184,0.82);line-height:1.55;font-weight:400;">Aggregated liquidity from Raydium, Orca, and Jupiter gives you the deepest pools and lowest slippage.</p>
+              </div>
+            </div>
+            <div class="accent-line" style="background:linear-gradient(90deg,rgba(236,72,153,0.4),rgba(236,72,153,0.05),transparent);"></div>
+          </div>
+
+        </div>
+        <!-- END cards -->
+
+      </div>
+      <!-- END phone-content -->
+
+      <!-- ── BOTTOM NAVIGATION BAR ── -->
+      <div class="bottom-nav">
+        <div class="bottom-nav-inner">
+
+          <!-- Home -->
+          <div class="nav-item">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9,22 9,12 15,12 15,22"/>
+            </svg>
+            <span style="color:#10b981;">Home</span>
+          </div>
+
+          <!-- Markets -->
+          <div class="nav-item">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="rgba(100,116,139,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>
+            </svg>
+            <span style="color:rgba(100,116,139,0.7);">Markets</span>
+          </div>
+
+          <!-- Swap — center hero button -->
+          <div class="nav-item">
+            <div class="nav-swap-btn">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 16V4m0 0L3 8m4-4 4 4"/>
+                <path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
+              </svg>
+            </div>
+            <span style="color:rgba(100,116,139,0.7);">Swap</span>
+          </div>
+
+          <!-- Alerts -->
+          <div class="nav-item">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="rgba(100,116,139,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span style="color:rgba(100,116,139,0.7);">Alerts</span>
+          </div>
+
+          <!-- Profile -->
+          <div class="nav-item">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="rgba(100,116,139,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span style="color:rgba(100,116,139,0.7);">Profile</span>
+          </div>
+
+        </div>
+      </div>
+      <!-- END bottom nav -->
+
+    </div>
+    <!-- END phone-frame -->
+
+  </div>
+  <!-- END phone-wrap -->
+
+</body>
+</html>

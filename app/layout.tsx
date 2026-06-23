@@ -1,0 +1,49 @@
+import type { Metadata } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { Providers } from "./providers";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "ChadWallet — Trade Solana Before Everyone Else",
+  description:
+    "Discover trending tokens, track whales, and execute trades instantly with ChadWallet. The fastest Solana trading wallet.",
+  keywords: ["Solana", "crypto wallet", "trading", "DeFi", "memecoin", "Solana wallet"],
+  icons: {
+    icon: "/logo/dark.png",
+    apple: "/logo/dark.png",
+  },
+  openGraph: {
+    title: "ChadWallet — Trade Solana Before Everyone Else",
+    description:
+      "Discover trending tokens, track whales, and execute trades instantly with ChadWallet.",
+    type: "website",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ChadWallet — Trade Solana Before Everyone Else",
+    description:
+      "Discover trending tokens, track whales, and execute trades instantly with ChadWallet.",
+    site: "@chadwallet",
+  },
+  themeColor: "#030305",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans bg-bg-primary text-white antialiased overflow-x-hidden">
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}

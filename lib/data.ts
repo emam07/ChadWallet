@@ -1,0 +1,30 @@
+export interface Token {
+  symbol: string;
+  name: string;
+  address: string;
+  price: number;
+  change: number;
+  volume: number;
+  marketCap: number;
+  color: string;
+}
+
+export const tokens: Token[] = [
+  { symbol: "SOL", name: "Solana", address: "So11111111111111111111111111111111111111112", price: 187.42, change: 8.34, volume: 2_840_000_000, marketCap: 88_100_000_000, color: "#9945FF" },
+  { symbol: "BONK", name: "Bonk", address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", price: 0.0000342, change: 24.71, volume: 412_000_000, marketCap: 2_280_000_000, color: "#F7931A" },
+  { symbol: "WIF", name: "dogwifhat", address: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", price: 2.14, change: 12.45, volume: 890_000_000, marketCap: 2_130_000_000, color: "#FF6B6B" },
+  { symbol: "JUP", name: "Jupiter", address: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", price: 1.23, change: -3.21, volume: 320_000_000, marketCap: 1_600_000_000, color: "#1BE999" },
+  { symbol: "PYTH", name: "Pyth Network", address: "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3", price: 0.487, change: 5.67, volume: 180_000_000, marketCap: 690_000_000, color: "#E6DAFE" },
+  { symbol: "ORCA", name: "Orca", address: "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE", price: 4.21, change: -1.88, volume: 95_000_000, marketCap: 412_000_000, color: "#00C2FF" },
+  { symbol: "MEME", name: "Memecoin", address: "MEMEvQpqMVCBxkBSNBfq9XHHmcFbpwzCHkWCsUnz7XS", price: 0.031, change: 67.42, volume: 780_000_000, marketCap: 310_000_000, color: "#FFD700" },
+  { symbol: "RAY", name: "Raydium", address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", price: 2.89, change: 9.11, volume: 220_000_000, marketCap: 870_000_000, color: "#2775CA" },
+  { symbol: "SAMO", name: "Samoyedcoin", address: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", price: 0.022, change: 34.2, volume: 60_000_000, marketCap: 140_000_000, color: "#F0A500" },
+  { symbol: "ATLAS", name: "Star Atlas", address: "ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx", price: 0.0071, change: -6.3, volume: 45_000_000, marketCap: 95_000_000, color: "#A78BFA" },
+  { symbol: "MNGO", name: "Mango", address: "MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac", price: 0.058, change: 15.9, volume: 72_000_000, marketCap: 180_000_000, color: "#FFB347" },
+  { symbol: "POPCAT", name: "Popcat", address: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr", price: 0.921, change: 41.3, volume: 560_000_000, marketCap: 920_000_000, color: "#FF8C94" },
+  { symbol: "BOME", name: "Book of Meme", address: "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82", price: 0.0128, change: 18.6, volume: 340_000_000, marketCap: 530_000_000, color: "#98FF98" },
+  { symbol: "MEW", name: "cat in a dogs world", address: "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5", price: 0.00812, change: 29.4, volume: 280_000_000, marketCap: 490_000_000, color: "#DDA0DD" },
+  { symbol: "POPCAT", name: "Popcat", address: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr", price: 0.921, change: 41.3, volume: 560_000_000, marketCap: 920_000_000, color: "#FF8C94" },
+];
+
+export const marketTokens: Token[] = tokens.slice(0, 8);
