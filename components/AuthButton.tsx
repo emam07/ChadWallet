@@ -9,6 +9,16 @@ function truncate(addr: string) {
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
+// NEXT_PUBLIC_* vars are inlined at BUILD time, so this is a reliable signal —
+// readable identically on server and client (no hydration mismatch). If it is
+// false in a deployed build, the env var was not set on the host (e.g. Vercel)
+// when the app was built, so <PrivyProvider> never mounted and login() can
+// never open the Google/Apple popup. See app/providers.tsx.
+const PRIVY_CONFIGURED = Boolean(
+  process.env.NEXT_PUBLIC_PRIVY_APP_ID &&
+    process.env.NEXT_PUBLIC_PRIVY_APP_ID !== "your-privy-app-id-here"
+);
+
 interface AuthButtonProps {
   fullWidth?: boolean;
   /** Called after a login/logout action is triggered (e.g. to close a mobile menu). */
@@ -65,17 +75,31 @@ export function AuthButton({ fullWidth, onAction }: AuthButtonProps) {
       // the click but keep the button fully visible (just a subtle pulse on
       // the icon) so users always see the Sign Up affordance.
       onClick={() => {
+        if (!PRIVY_CONFIGURED) {
+          console.error(
+            "[ChadWallet] Login is unavailable because NEXT_PUBLIC_PRIVY_APP_ID " +
+              "was not set when this build was created. Add it in your host's " +
+              "Environment Variables (Vercel → Settings → Environment Variables) " +
+              "and redeploy."
+          );
+          return;
+        }
         if (!ready) return;
         login();
         onAction?.();
       }}
-      aria-busy={!ready}
+      aria-busy={PRIVY_CONFIGURED && !ready}
+      title={
+        PRIVY_CONFIGURED
+          ? undefined
+          : "Login unavailable: NEXT_PUBLIC_PRIVY_APP_ID is not configured on this deployment."
+      }
       className={cn(
         "flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold bg-accent-green text-black rounded-lg hover:bg-accent-green/90 hover:shadow-glow-green transition-all duration-200",
         fullWidth ? "w-full py-3" : ""
       )}
     >
-      <Wallet className={cn("w-4 h-4", !ready && "animate-pulse")} />
+      <Wallet className={cn("w-4 h-4", PRIVY_CONFIGURED && !ready && "animate-pulse")} />
       Log In / Sign Up
     </motion.button>
   );
