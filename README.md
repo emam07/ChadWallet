@@ -7,7 +7,7 @@ A Solana-first trading wallet web app with a landing page and live trading inter
 - **Landing page** — token ticker banners, market preview, feature highlights, and app store links
 - **Trading page** — real-time price chart (TradingView lightweight-charts), live trades feed, and swap panel via Jupiter Aggregator
 - **Auth** — Sign in with Apple / Google via Privy (embedded Solana wallet created on first login)
-- **Live data** — trending tokens, OHLCV candlesticks, and trade history from BirdEye API
+- **Live data** — trending tokens, OHLCV candlesticks, and trade history from the Codex.io GraphQL API
 
 ## Tech Stack
 
@@ -18,7 +18,7 @@ A Solana-first trading wallet web app with a landing page and live trading inter
 - [lightweight-charts](https://tradingview.github.io/lightweight-charts/) (TradingView)
 - [SWR](https://swr.vercel.app/) for data fetching
 - [Privy](https://privy.io/) for auth + embedded wallets
-- [BirdEye API](https://birdeye.so/data-api) for market data
+- [Codex.io](https://www.codex.io) for market data
 - [Jupiter Aggregator](https://jup.ag/) for swaps
 
 ## Getting Started
@@ -47,7 +47,7 @@ cp .env.local.example .env.local
 | Variable | Where to get it |
 |---|---|
 | `NEXT_PUBLIC_PRIVY_APP_ID` | [dashboard.privy.io](https://dashboard.privy.io) |
-| `BIRDEYE_API_KEY` | [birdeye.so/data-api](https://birdeye.so/data-api) |
+| `CODEX_API_KEY` | [codex.io](https://www.codex.io) |
 | `NEXT_PUBLIC_ALCHEMY_RPC_URL` | [dashboard.alchemy.com](https://dashboard.alchemy.com) |
 
 **Privy setup:**

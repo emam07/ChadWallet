@@ -1,10 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Providers } from "./providers";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+export const viewport: Viewport = {
+  themeColor: "#030305",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "ChadWallet — Trade Solana Before Everyone Else",
   description:
     "Discover trending tokens, track whales, and execute trades instantly with ChadWallet. The fastest Solana trading wallet.",
@@ -27,7 +34,6 @@ export const metadata: Metadata = {
       "Discover trending tokens, track whales, and execute trades instantly with ChadWallet.",
     site: "@chadwallet",
   },
-  themeColor: "#030305",
 };
 
 export default function RootLayout({

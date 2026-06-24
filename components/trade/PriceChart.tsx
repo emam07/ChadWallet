@@ -117,15 +117,28 @@ export function PriceChart({ address }: { address: string }) {
     if (!data?.candles || !seriesRef.current) return;
     const candles: Candle[] = data.candles;
 
-    const sorted = [...candles]
-      .sort((a, b) => a.time - b.time)
+    const cleaned = [...candles]
       .filter(
         (c) =>
+          typeof c.time === "number" &&
           typeof c.open === "number" &&
           typeof c.high === "number" &&
           typeof c.low === "number" &&
           typeof c.close === "number"
-      );
+      )
+      .sort((a, b) => a.time - b.time);
+
+    // lightweight-charts asserts strictly-ascending, unique timestamps.
+    // Collapse any candles that share a time, keeping the last (freshest) one.
+    const sorted: Candle[] = [];
+    for (const c of cleaned) {
+      const last = sorted[sorted.length - 1];
+      if (last && last.time === c.time) {
+        sorted[sorted.length - 1] = c;
+      } else {
+        sorted.push(c);
+      }
+    }
 
     seriesRef.current.candle.setData(
       sorted.map((c) => ({

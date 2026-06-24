@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 
 const stats = [
-  { label: "Active Traders", value: 247000, prefix: "", suffix: "+", display: "247K+" },
-  { label: "Daily Volume", value: 1.4, prefix: "$", suffix: "B+", display: "$1.4B+" },
-  { label: "Swaps Executed", value: 4200000, prefix: "", suffix: "+", display: "4.2M+" },
-  { label: "Avg Execution", value: 0.4, prefix: "", suffix: "s", display: "0.4s" },
+  { label: "Active Traders", end: 247, prefix: "", suffix: "K+", decimals: 0, tag: "COMMUNITY" },
+  { label: "Daily Volume", end: 1.4, prefix: "$", suffix: "B+", decimals: 1, tag: "LIQUIDITY" },
+  { label: "Swaps Executed", end: 4.2, prefix: "", suffix: "M+", decimals: 1, tag: "TRANSACTIONS" },
+  { label: "Avg Execution", end: 0.4, prefix: "", suffix: "s", decimals: 1, tag: "SPEED" },
 ];
 
 function CountUp({
@@ -62,7 +62,9 @@ function CountUp({
 export default function Stats() {
   return (
     <section className="relative py-28 px-4 sm:px-6 overflow-hidden">
+      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-accent-green/[0.02] via-accent-purple/[0.03] to-transparent pointer-events-none" />
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-accent-purple/20 to-transparent" />
 
       <div className="max-w-6xl mx-auto">
         <motion.div
@@ -73,11 +75,16 @@ export default function Stats() {
           className="text-center mb-16"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-accent-green/20 text-xs font-mono text-accent-green mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse" />
             BY THE NUMBERS
           </div>
           <h2 className="text-4xl sm:text-5xl font-bold tracking-tight">
-            Traders trust <span className="text-gradient-green">ChadWallet</span>
+            Traders trust{" "}
+            <span className="text-gradient-green">ChadWallet</span>
           </h2>
+          <p className="text-white/30 text-base mt-4 font-mono">
+            Real-time stats from Solana mainnet
+          </p>
         </motion.div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -93,8 +100,16 @@ export default function Stats() {
               <div className="absolute inset-0 bg-gradient-to-br from-accent-green/[0.04] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
               <div className="relative z-10">
+                <div className="text-[10px] font-mono text-white/20 tracking-widest mb-3 group-hover:text-accent-green/50 transition-colors duration-300">
+                  {stat.tag}
+                </div>
                 <div className="text-3xl sm:text-5xl font-bold tracking-tight text-gradient-green mb-2">
-                  {stat.display}
+                  <CountUp
+                    end={stat.end}
+                    prefix={stat.prefix}
+                    suffix={stat.suffix}
+                    decimals={stat.decimals}
+                  />
                 </div>
                 <div className="text-sm text-white/40 font-medium">{stat.label}</div>
               </div>
@@ -103,16 +118,6 @@ export default function Stats() {
             </motion.div>
           ))}
         </div>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-          className="text-center text-white/20 text-sm mt-8"
-        >
-          Stats updated in real-time · Solana mainnet data
-        </motion.p>
       </div>
     </section>
   );

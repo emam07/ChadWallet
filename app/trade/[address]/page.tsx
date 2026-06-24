@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, use } from "react";
 import dynamic from "next/dynamic";
+import { usePrivy } from "@privy-io/react-auth";
 import useSWR from "swr";
 import Image from "next/image";
 import { ArrowLeft, TrendingUp, TrendingDown, Copy, ExternalLink } from "lucide-react";
@@ -150,7 +151,8 @@ export default function TradePage({
 }) {
   const { address } = use(params);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userLoggedIn, setUserLoggedIn] = useState(false);
+  const { ready, authenticated, login } = usePrivy();
+  const userLoggedIn = ready && authenticated;
 
   const { data: tokenResponse } = useSWR(`/api/token/${address}`, fetcher, {
     refreshInterval: 10000,
@@ -166,28 +168,8 @@ export default function TradePage({
     mockTokens.find((t) => t.address === address)?.symbol ??
     "???";
 
-  // Try to detect Privy auth state
-  useEffect(() => {
-    try {
-      // Privy stores auth state in localStorage
-      const privyUser = localStorage.getItem("privy:user");
-      if (privyUser) setUserLoggedIn(true);
-    } catch {
-      // ignore
-    }
-  }, []);
-
   const handleLogin = () => {
-    // Try to trigger Privy login modal if available
-    // Falls back to alert if Privy isn't configured
-    const privyButton = document.querySelector<HTMLButtonElement>(
-      "[data-privy-login]"
-    );
-    if (privyButton) {
-      privyButton.click();
-    } else {
-      alert("Set NEXT_PUBLIC_PRIVY_APP_ID in .env.local to enable login");
-    }
+    if (ready && !authenticated) login();
   };
 
   return (
@@ -228,7 +210,6 @@ export default function TradePage({
             </button>
           ) : (
             <button
-              data-privy-login
               onClick={handleLogin}
               className="px-4 py-1.5 text-xs font-bold bg-accent-green text-black rounded-lg hover:bg-accent-green/90 transition-all"
             >

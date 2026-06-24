@@ -1,45 +1,42 @@
 import { NextResponse } from "next/server";
 import { tokens as mockTokens } from "@/lib/data";
+import { getTokenPairs } from "@/lib/dexscreener";
+import { num } from "@/lib/num";
 
-const BIRDEYE_BASE = "https://public-api.birdeye.so";
-
-async function fetchBirdEye(path: string) {
-  const apiKey = process.env.BIRDEYE_API_KEY;
-  if (!apiKey || apiKey === "your-birdeye-api-key-here") return null;
-
-  try {
-    const res = await fetch(`${BIRDEYE_BASE}${path}`, {
-      headers: {
-        "X-API-KEY": apiKey,
-        "x-chain": "solana",
-      },
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
+// Trending Solana tokens. DexScreener has no public "trending" endpoint, so we
+// price a curated universe of liquid Solana tokens (lib/data.ts) via DexScreener
+// in one batched call and rank them by real 24h volume. Falls back to the static
+// mock token list when DexScreener is unreachable.
 export async function GET() {
-  const data = await fetchBirdEye(
-    "/defi/v3/token/trending?sort_by=rank&sort_type=asc&offset=0&limit=20"
-  );
+  // Dedupe the curated universe (lib/data.ts has a couple of repeats).
+  const universe = Array.from(new Set(mockTokens.map((t) => t.address)));
 
-  if (data?.data?.tokens) {
-    const tokens = data.data.tokens.map((t: Record<string, unknown>) => ({
-      symbol: t.symbol,
-      name: t.name,
-      address: t.address,
-      price: t.price,
-      change: t.priceChange24hPercent,
-      volume: t.v24hUSD,
-      marketCap: t.mc,
-      logoURI: t.logoURI,
-      color: "#00FFA3",
-    }));
-    return NextResponse.json({ tokens });
+  const pairs = await getTokenPairs(universe);
+
+  if (pairs.size) {
+    const tokens = mockTokens
+      .map((mock) => {
+        const pair = pairs.get(mock.address.toLowerCase());
+        if (!pair) return null;
+        return {
+          symbol: pair.baseToken.symbol || mock.symbol,
+          name: pair.baseToken.name || mock.name,
+          address: pair.baseToken.address,
+          price: num(pair.priceUsd),
+          // DexScreener priceChange.h24 is already a percent.
+          change: num(pair.priceChange?.h24),
+          volume: num(pair.volume?.h24),
+          marketCap: num(pair.marketCap ?? pair.fdv),
+          logoURI: pair.info?.imageUrl ?? undefined,
+          color: mock.color,
+        };
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null)
+      // Dedupe by address (curated list repeats some tokens) then rank by volume.
+      .filter((t, i, arr) => arr.findIndex((x) => x.address === t.address) === i)
+      .sort((a, b) => b.volume - a.volume);
+
+    if (tokens.length) return NextResponse.json({ tokens });
   }
 
   // Fallback to mock data

@@ -1,34 +1,38 @@
 import { NextResponse } from "next/server";
+import { isValidSolanaAddress } from "@/lib/validation";
+import { getTokenPair } from "@/lib/dexscreener";
+import { num } from "@/lib/num";
 
-const BIRDEYE_BASE = "https://public-api.birdeye.so";
-
-async function fetchBirdEye(path: string) {
-  const apiKey = process.env.BIRDEYE_API_KEY;
-  if (!apiKey || apiKey === "your-birdeye-api-key-here") return null;
-
-  try {
-    const res = await fetch(`${BIRDEYE_BASE}${path}`, {
-      headers: { "X-API-KEY": apiKey, "x-chain": "solana" },
-      next: { revalidate: 10 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
+// Single-token overview via DexScreener (most-liquid Solana pair). Falls back to
+// a neutral "unknown token" shape when DexScreener has no data for the address.
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ address: string }> }
 ) {
   const { address } = await params;
-  const data = await fetchBirdEye(
-    `/defi/v3/token/overview?address=${address}`
-  );
 
-  if (data?.data) {
-    return NextResponse.json({ token: data.data });
+  if (!isValidSolanaAddress(address)) {
+    return NextResponse.json({ error: "Invalid token address" }, { status: 400 });
+  }
+
+  const pair = await getTokenPair(address);
+
+  if (pair?.baseToken) {
+    return NextResponse.json({
+      token: {
+        address,
+        symbol: pair.baseToken.symbol,
+        name: pair.baseToken.name,
+        price: num(pair.priceUsd),
+        // DexScreener priceChange.h24 is already a percent.
+        priceChange24hPercent: num(pair.priceChange?.h24),
+        v24hUSD: num(pair.volume?.h24),
+        mc: num(pair.marketCap ?? pair.fdv),
+        // DexScreener does not expose holder counts.
+        holder: 0,
+        logoURI: pair.info?.imageUrl ?? undefined,
+      },
+    });
   }
 
   return NextResponse.json({

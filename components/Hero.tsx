@@ -82,9 +82,35 @@ function FloatingTokenCard({
 
 function GlowOrb({ className }: { className?: string }) {
   return (
-    <div
-      className={`absolute rounded-full blur-[120px] pointer-events-none ${className}`}
-    />
+    <div className={`absolute rounded-full blur-[120px] pointer-events-none ${className}`} />
+  );
+}
+
+function HeroVideo() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: 1.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      className="w-full max-w-[280px] mx-auto mt-10"
+    >
+      <motion.div
+        animate={{ y: [0, -8, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        className="relative rounded-2xl overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.06)]"
+      >
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-accent-green/50 to-transparent z-10" />
+        <video
+          src="/video/chadwallet.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-auto block"
+          style={{ willChange: "transform", transform: "translateZ(0)" }}
+        />
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -120,7 +146,7 @@ export default function Hero() {
       <GlowOrb className="w-[400px] h-[400px] bg-accent-purple/10 top-1/4 right-[-5%]" />
       <GlowOrb className="w-[300px] h-[300px] bg-accent-green/6 bottom-1/4 left-[-5%]" />
 
-      {/* Animated ring */}
+      {/* Animated rings */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-white/[0.02] pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-accent-green/[0.04] pointer-events-none animate-[spin_30s_linear_infinite]" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border border-accent-purple/[0.06] pointer-events-none animate-[spin_20s_linear_infinite_reverse]" />
@@ -157,37 +183,8 @@ export default function Hero() {
           <span className="text-white">Else.</span>
         </motion.h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-lg sm:text-xl text-white/50 max-w-xl mb-10 leading-relaxed"
-        >
-          Discover trending tokens, track whales, and execute trades instantly with ChadWallet.
-        </motion.p>
-
-        {/* Product demo video */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 1.1, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-[220px] mt-16"
-        >
-          <p className="text-xs font-mono text-white/25 uppercase tracking-widest text-center mb-4">
-            See it in action
-          </p>
-          <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
-            <video
-              src="/video/chadwallet.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full h-auto block"
-            />
-            <div className="absolute inset-0 pointer-events-none border border-white/[0.04] rounded-2xl" />
-          </div>
-        </motion.div>
+        {/* Hero video */}
+        <HeroVideo />
       </div>
 
       {/* Bottom fade */}

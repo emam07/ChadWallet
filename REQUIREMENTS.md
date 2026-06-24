@@ -47,7 +47,7 @@ ChadWallet is a Solana-first trading wallet web app. This document covers every 
 |---|---|---|
 | Top banner | ✅ | `<TokenTicker />` on landing page — forward scroll |
 | Bottom banner | ✅ | `<TokenTicker reverse />` on landing page — reverse scroll |
-| Real token data | ✅ | Fetches from `/api/tokens` (BirdEye v3 trending endpoint) every 30s; fallback to 15 mock tokens |
+| Real token data | ✅ | Fetches from `/api/tokens` (Codex `filterTokens` trending query) every 30s; fallback to 15 mock tokens |
 | Links to trading page | ✅ | Clicking any token routes to `/trade/{address}` |
 
 ### 5. Trading Page (`/trade/[address]`)
@@ -71,7 +71,7 @@ ChadWallet is a Solana-first trading wallet web app. This document covers every 
 | Copy address button | ✅ | Copies Solana token address to clipboard |
 | Solscan link | ✅ | External link to `solscan.io/token/{address}` |
 | Price chart | ✅ | `PriceChart` component — TradingView `lightweight-charts` library (MIT licensed) |
-| Candlestick chart | ✅ | OHLCV data from `/api/ohlcv/{address}` (BirdEye), falls back to generated mock data |
+| Candlestick chart | ✅ | OHLCV data from `/api/ohlcv/{address}` (Codex `getBars`), falls back to generated mock data |
 | Timeframe selector | ✅ | 15m / 1H / 4H / 1D buttons |
 | Volume bars | ✅ | Histogram series overlaid at chart bottom |
 | Live Trades tab | ✅ | `TradesFeed` component — polls `/api/trades/{address}` every 5s |
@@ -101,7 +101,7 @@ ChadWallet is a Solana-first trading wallet web app. This document covers every 
 | Auth | `@privy-io/react-auth` | Apple + Google sign-in, Solana embedded wallets |
 | Chart | `lightweight-charts` (TradingView, MIT) | Candlestick OHLCV price chart |
 | Data fetching | SWR | Client-side polling with stale-while-revalidate |
-| Market data | BirdEye API | Trending tokens, OHLCV, trades, token metadata |
+| Market data | Codex.io GraphQL API | Trending tokens, OHLCV, trades, token metadata (replaced BirdEye, which dropped its free tier) |
 | Swaps | Jupiter Aggregator v6 | Best-route Solana swap quotes |
 | RPC | Alchemy (Solana mainnet) | Solana node access |
 | Font | Geist (Vercel) | Mono + sans typeface |
@@ -118,8 +118,8 @@ Create `.env.local` at project root with:
 # Privy — https://dashboard.privy.io
 NEXT_PUBLIC_PRIVY_APP_ID=your-privy-app-id-here
 
-# BirdEye — https://birdeye.so/data-api
-BIRDEYE_API_KEY=your-birdeye-api-key-here
+# Codex.io — https://www.codex.io (replaces BirdEye)
+CODEX_API_KEY=your-codex-api-key-here
 
 # Alchemy Solana RPC — https://dashboard.alchemy.com
 NEXT_PUBLIC_ALCHEMY_RPC_URL=https://solana-mainnet.g.alchemy.com/v2/your-key-here
@@ -133,12 +133,12 @@ All three services have free tiers. The app gracefully falls back to mock data w
 
 | Route | Method | Description |
 |---|---|---|
-| `/api/tokens` | GET | Fetches top 20 trending Solana tokens from BirdEye |
+| `/api/tokens` | GET | Fetches top 20 trending Solana tokens from Codex `filterTokens` |
 | `/api/token/[address]` | GET | Fetches token overview (price, volume, mc, metadata) |
 | `/api/ohlcv/[address]` | GET | Fetches OHLCV candlestick data (supports `?type=15m\|1H\|4H\|1D`) |
 | `/api/trades/[address]` | GET | Fetches recent swap transactions for a token |
 
-All routes proxy BirdEye requests server-side (API key is never exposed to the browser) and fall back to deterministic mock data when the API key is absent.
+All routes proxy Codex.io GraphQL requests server-side (API key is never exposed to the browser) and fall back to deterministic mock data when the API key is absent.
 
 ---
 
@@ -152,7 +152,7 @@ F:\ChadWallet\
 │   ├── providers.tsx           ← PrivyProvider client wrapper
 │   ├── globals.css             ← Global styles + keyframe animations
 │   └── api/
-│       ├── tokens/route.ts     ← BirdEye trending tokens proxy
+│       ├── tokens/route.ts     ← Codex trending tokens proxy
 │       ├── token/[address]/    ← Token metadata proxy
 │       ├── ohlcv/[address]/    ← Candlestick data proxy
 │       └── trades/[address]/   ← Live trades proxy
@@ -163,7 +163,7 @@ F:\ChadWallet\
 ├── components/
 │   ├── Navbar.tsx              ← Nav + Privy sign-in button
 │   ├── Hero.tsx                ← Hero section with 3D parallax
-│   ├── TokenTicker.tsx         ← Animated token banner (SWR + BirdEye)
+│   ├── TokenTicker.tsx         ← Animated token banner (SWR + Codex)
 │   ├── Features.tsx            ← Feature cards + flow showcase
 │   ├── MarketPreview.tsx       ← Live market table
 │   ├── Stats.tsx               ← Animated stats (count-up)
@@ -223,7 +223,7 @@ npm run build && npm start
 2. Import project at https://vercel.com/new
 3. Set environment variables in Vercel project settings:
    - `NEXT_PUBLIC_PRIVY_APP_ID`
-   - `BIRDEYE_API_KEY`
+   - `CODEX_API_KEY`
    - `NEXT_PUBLIC_ALCHEMY_RPC_URL`
 4. Deploy — Vercel auto-detects Next.js
 
@@ -238,8 +238,8 @@ npm run build && npm start
 4. Settings → Embedded Wallets → enable **Solana**
 5. Settings → Allowed Origins → add your Vercel domain
 
-### BirdEye
-1. Create account at https://birdeye.so/data-api
+### Codex.io
+1. Create account at https://www.codex.io
 2. Dashboard → API Keys → create new key
 3. Free tier: 1,000 req/day, sufficient for development
 
@@ -256,5 +256,5 @@ Jupiter's public quote API at `quote-api.jup.ag/v6` is free with no API key. The
 ## Notes
 
 - **TradingView Charting Library vs lightweight-charts**: The brief mentions `charting-library-docs` which refers to TradingView's *advanced* charting library — this requires a license request from TradingView and is not publicly available. This implementation uses `lightweight-charts` (MIT licensed, maintained by TradingView) which provides full OHLCV candlestick charts. For the advanced library, request access at tradingview.com/HTML5-stock-forex-bitcoin-charting-library.
-- **Mock data fallback**: Every API route returns realistic mock data when the BirdEye API key is not set. The app is fully functional without any API keys for development/demo.
+- **Mock data fallback**: Every API route returns realistic mock data when the Codex API key is not set. The app is fully functional without any API keys for development/demo.
 - **Jupiter swap execution**: The swap UI shows quotes and is wired up for execution. Actual on-chain swaps require the user to have SOL for gas and a connected Solana wallet via Privy.

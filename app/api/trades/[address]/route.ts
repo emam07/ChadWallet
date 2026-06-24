@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
+import { isValidSolanaAddress } from "@/lib/validation";
+import { getTopPoolAddress, getPoolTrades } from "@/lib/geckoterminal";
 
-const BIRDEYE_BASE = "https://public-api.birdeye.so";
+// Live swaps for a token via GeckoTerminal. We resolve the token's most-liquid
+// pool, then fetch that pool's recent trades. Falls back to seeded mock trades
+// when GeckoTerminal has no data.
+
+function shortWallet(maker: string | null): string {
+  if (!maker || maker.length < 8) return maker || "unknown";
+  return `${maker.slice(0, 4)}...${maker.slice(-4)}`;
+}
 
 function generateMockTrades(address: string, count = 30) {
   const wallets = [
@@ -9,13 +18,15 @@ function generateMockTrades(address: string, count = 30) {
   ];
   const now = Date.now();
   const trades = [];
-  let price = (parseInt(address.slice(0, 6), 16) % 10000) / 100 + 0.1;
+  // Sum char codes for a safe, always-valid seed price
+  const seed = address.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 10_000;
+  let price = seed / 100 + 0.1;
 
   for (let i = 0; i < count; i++) {
     const isBuy = Math.random() > 0.45;
     const priceChange = (Math.random() - 0.48) * price * 0.005;
     price = Math.max(0.000001, price + priceChange);
-    const amount = Math.random() * 50000 + 100;
+    const amount = Math.random() * 50_000 + 100;
     const value = amount * price;
 
     trades.push({
@@ -25,7 +36,7 @@ function generateMockTrades(address: string, count = 30) {
       amount,
       value,
       wallet: wallets[Math.floor(Math.random() * wallets.length)],
-      timestamp: now - i * (Math.random() * 60000 + 5000),
+      timestamp: now - i * (Math.random() * 60_000 + 5_000),
     });
   }
 
@@ -33,38 +44,29 @@ function generateMockTrades(address: string, count = 30) {
 }
 
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ address: string }> }
 ) {
   const { address } = await params;
-  const apiKey = process.env.BIRDEYE_API_KEY;
 
-  if (apiKey && apiKey !== "your-birdeye-api-key-here") {
-    try {
-      const res = await fetch(
-        `${BIRDEYE_BASE}/defi/txs/token?address=${address}&tx_type=swap&offset=0&limit=50`,
-        {
-          headers: { "X-API-KEY": apiKey, "x-chain": "solana" },
-          next: { revalidate: 5 },
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.data?.items?.length) {
-          const trades = data.data.items.map((t: Record<string, unknown>) => ({
-            txHash: t.txHash,
-            type: (t.side as string) === "buy" ? "buy" : "sell",
-            price: t.price,
-            amount: t.tokenAmount,
-            value: t.volumeUSD,
-            wallet: `${(t.owner as string)?.slice(0, 4)}...${(t.owner as string)?.slice(-4)}`,
-            timestamp: (t.blockUnixTime as number) * 1000,
-          }));
-          return NextResponse.json({ trades });
-        }
-      }
-    } catch {
-      // fall through
+  if (!isValidSolanaAddress(address)) {
+    return NextResponse.json({ error: "Invalid token address" }, { status: 400 });
+  }
+
+  const pool = await getTopPoolAddress(address);
+  if (pool) {
+    const poolTrades = await getPoolTrades(pool);
+    if (poolTrades.length) {
+      const trades = poolTrades.map((t) => ({
+        txHash: t.txHash,
+        type: t.kind,
+        price: t.priceUsd,
+        amount: t.tokenAmount,
+        value: t.valueUsd,
+        wallet: shortWallet(t.maker),
+        timestamp: t.timestamp,
+      }));
+      return NextResponse.json({ trades });
     }
   }
 
