@@ -17,12 +17,6 @@ interface Trade {
   timestamp: number;
 }
 
-interface Holder {
-  address: string;
-  amount: number;
-  percentage: number;
-}
-
 function formatPrice(price: number) {
   if (!price) return "$0.00";
   if (price < 0.000001) return `$${price.toFixed(9)}`;
@@ -46,32 +40,6 @@ function timeAgo(ts: number) {
   return `${Math.floor(delta / 3600)}h`;
 }
 
-function generateHolders(address: string): Holder[] {
-  const seed = parseInt(address.slice(0, 6), 16);
-  const prefixes = ["7xKp", "9aLm", "BcZn", "Dw4R", "Fg8S", "HjT2", "Km6V", "Np3Y", "Pq1X", "Rst5"];
-  const suffixes = ["3Rft", "Wq2x", "8Yh1", "5Tpj", "Lk7n", "9Qwe", "Xt4b", "2Cvs", "4Mno", "7Uvw"];
-  const holders = [];
-  let remaining = 100;
-
-  for (let i = 0; i < 10; i++) {
-    const pct = i === 0
-      ? 8 + ((seed % 7))
-      : i === 1
-      ? 4 + ((seed % 5))
-      : Math.max(0.1, (remaining / (10 - i)) * (0.5 + Math.random()));
-    const capped = Math.min(pct, remaining);
-    remaining -= capped;
-
-    holders.push({
-      address: `${prefixes[i % prefixes.length]}...${suffixes[(i + seed) % suffixes.length]}`,
-      amount: capped * 1_000_000,
-      percentage: capped,
-    });
-  }
-
-  return holders.sort((a, b) => b.percentage - a.percentage);
-}
-
 export function TradesFeed({ address }: { address: string }) {
   const [tab, setTab] = useState<"trades" | "holders">("trades");
   const { data } = useSWR(`/api/trades/${address}`, fetcher, {
@@ -79,7 +47,6 @@ export function TradesFeed({ address }: { address: string }) {
   });
 
   const trades: Trade[] = data?.trades ?? [];
-  const holders = generateHolders(address);
 
   return (
     <div className="flex flex-col h-full">
@@ -172,43 +139,19 @@ export function TradesFeed({ address }: { address: string }) {
         </>
       )}
 
-      {/* Holders */}
+      {/* Holders — the key-less data sources (DexScreener / GeckoTerminal) don't
+          expose holder distributions, so we show an honest unavailable state
+          rather than fabricating wallets and percentages. */}
       {tab === "holders" && (
-        <>
-          <div className="grid grid-cols-3 px-4 py-1.5 text-[10px] text-white/25 font-medium border-b border-white/[0.04]">
-            <span>Wallet</span>
-            <span className="text-right">Amount</span>
-            <span className="text-right">Share</span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {holders.map((h, i) => (
-              <div
-                key={h.address}
-                className="grid grid-cols-3 items-center px-4 py-2.5 text-xs border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-4 text-[10px] text-white/25">{i + 1}</span>
-                  <span className="font-mono text-white/60">{h.address}</span>
-                </div>
-                <span className="text-right font-mono text-white/50">
-                  {formatAmount(h.amount)}
-                </span>
-                <div className="flex items-center justify-end gap-2">
-                  <div className="w-12 h-1 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-accent-green/60"
-                      style={{ width: `${Math.min(100, h.percentage * 8)}%` }}
-                    />
-                  </div>
-                  <span className="font-mono text-white/60 w-10 text-right">
-                    {h.percentage.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <Users className="w-6 h-6 text-white/20 mb-3" />
+          <p className="text-sm text-white/50">Holder data not available</p>
+          <p className="text-[11px] text-white/30 mt-1.5 max-w-[240px]">
+            The current key-less market data tier doesn&apos;t expose holder
+            distributions. This tab activates once a holder-aware data source
+            (e.g. an indexed RPC) is connected.
+          </p>
+        </div>
       )}
     </div>
   );

@@ -97,6 +97,15 @@ body {
   .border-glow-green {
     box-shadow: 0 0 0 1px rgba(0, 255, 163, 0.2), inset 0 0 0 1px rgba(0, 255, 163, 0.05);
   }
+
+  /* Horizontal card strips on mobile: hide the scrollbar but keep scrolling */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes ticker {

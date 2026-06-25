@@ -39,6 +39,7 @@ export function SwapPanel({
     priceImpact: number;
   } | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   // Jupiter quote fetcher
   const fetchQuote = useCallback(async (amount: string) => {
@@ -84,18 +85,16 @@ export function SwapPanel({
     return () => clearTimeout(t);
   }, [inputAmount, fetchQuote]);
 
+  // Any change to the order invalidates a pending review.
+  useEffect(() => {
+    setReviewing(false);
+  }, [inputAmount, mode, slippage]);
+
   const inputToken = mode === "buy" ? "SOL" : symbol;
   const outputToken = mode === "buy" ? symbol : "SOL";
   const outputAmount = quote?.outAmount ?? "";
   const priceImpact = quote?.priceImpact ?? 0;
-
-  // Mock position data
-  const mockPosition = {
-    amount: 125430,
-    value: 125430 * price,
-    avgBuy: price * 0.82,
-    pnl: (price - price * 0.82) / (price * 0.82) * 100,
-  };
+  const hasOrder = parseFloat(inputAmount) > 0 && !!quote;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -161,7 +160,6 @@ export function SwapPanel({
         <div className="bg-white/[0.04] rounded-xl p-3 border border-white/[0.06] mb-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-white/40">You pay</span>
-            <span className="text-xs text-white/30">Balance: —</span>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -178,17 +176,19 @@ export function SwapPanel({
               <span className="text-sm font-semibold text-white">{inputToken}</span>
             </div>
           </div>
-          <div className="flex gap-1 mt-2">
-            {[25, 50, 75, 100].map((pct) => (
-              <button
-                key={pct}
-                onClick={() => setInputAmount((1 * pct / 100).toFixed(2))}
-                className="flex-1 py-0.5 text-[10px] rounded bg-white/[0.06] text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-              >
-                {pct}%
-              </button>
-            ))}
-          </div>
+          {mode === "buy" && (
+            <div className="flex gap-1 mt-2">
+              {[0.1, 0.5, 1, 5].map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => setInputAmount(String(amt))}
+                  className="flex-1 py-0.5 text-[10px] rounded bg-white/[0.06] text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  {amt} SOL
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Arrow */}
@@ -247,16 +247,49 @@ export function SwapPanel({
           </button>
         ) : (
           <button
+            onClick={() => setReviewing(true)}
+            disabled={!hasOrder}
             className={cn(
               "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
-              mode === "buy"
+              !hasOrder
+                ? "bg-white/[0.06] text-white/30 cursor-not-allowed"
+                : mode === "buy"
                 ? "bg-accent-green text-black hover:bg-accent-green/90 hover:shadow-glow-green"
                 : "bg-red-500 text-white hover:bg-red-500/90"
             )}
           >
             <Zap className="w-4 h-4" />
-            {mode === "buy" ? `Buy ${symbol}` : `Sell ${symbol}`}
+            {!hasOrder
+              ? "Enter an amount"
+              : mode === "buy"
+              ? `Review buy ${symbol}`
+              : `Review sell ${symbol}`}
           </button>
+        )}
+
+        {/* Order review — built from the real Jupiter quote. Signing/submission
+            via the Privy embedded wallet is the documented next integration
+            step (see SwapPanel notes), so we surface the exact terms rather than
+            silently doing nothing or faking a confirmation. */}
+        {userLoggedIn && reviewing && hasOrder && (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-white/40">You pay</span>
+              <span className="font-mono text-white">{inputAmount} {inputToken}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/40">You receive (est.)</span>
+              <span className="font-mono text-white">~{outputAmount} {outputToken}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/40">Max slippage</span>
+              <span className="font-mono text-white">{slippage}%</span>
+            </div>
+            <p className="text-[10px] text-white/30 pt-1.5 border-t border-white/[0.06]">
+              Quote locked from Jupiter. On-chain submission requires signing with
+              your embedded wallet — wiring that step is the next milestone.
+            </p>
+          </div>
         )}
 
         <p className="text-[10px] text-white/20 text-center mt-2">
@@ -264,44 +297,20 @@ export function SwapPanel({
         </p>
       </div>
 
-      {/* User Position */}
+      {/* User Position — real positions require reading the connected wallet's
+          on-chain SPL balances (and cost basis for P&L). Until that is wired we
+          show an honest empty state instead of fabricated holdings. */}
       {userLoggedIn && (
         <div className="p-4">
           <div className="text-xs font-semibold text-white/60 mb-3">
             Your Position
           </div>
-          <div className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.06] space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/40">Holdings</span>
-              <span className="font-mono font-medium text-white">
-                {mockPosition.amount.toLocaleString()} {symbol}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-white/40">Value</span>
-              <span className="font-mono font-medium text-white">
-                ${mockPosition.value.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-white/40">Avg. Buy</span>
-              <span className="font-mono font-medium text-white">
-                ${formatPrice(mockPosition.avgBuy)}
-              </span>
-            </div>
-            <div className="h-px bg-white/[0.06]" />
-            <div className="flex justify-between text-sm">
-              <span className="text-white/40">P&L</span>
-              <span
-                className={cn(
-                  "font-mono font-bold",
-                  mockPosition.pnl >= 0 ? "text-accent-green" : "text-red-400"
-                )}
-              >
-                {mockPosition.pnl >= 0 ? "+" : ""}
-                {mockPosition.pnl.toFixed(2)}%
-              </span>
-            </div>
+          <div className="bg-white/[0.04] rounded-xl p-6 border border-white/[0.06] text-center">
+            <Wallet className="w-5 h-5 text-white/20 mx-auto mb-2" />
+            <p className="text-sm text-white/50">No {symbol} position yet</p>
+            <p className="text-[11px] text-white/30 mt-1">
+              Your holdings will appear here once on-chain balance reads are enabled.
+            </p>
           </div>
         </div>
       )}

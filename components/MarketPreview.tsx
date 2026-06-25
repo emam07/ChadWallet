@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import useSWR from "swr";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, BarChart2, Activity } from "lucide-react";
 import { marketTokens, type Token } from "@/lib/data";
 import { cn, formatPercent } from "@/lib/utils";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function Sparkline({ positive }: { positive: boolean }) {
   const points = positive
@@ -63,24 +66,19 @@ function formatMCap(m: number) {
 }
 
 export default function MarketPreview() {
-  const [rows, setRows] = useState<Token[]>(marketTokens);
+  // Live top-volume Solana tokens from the same endpoint the trade page uses
+  // (GeckoTerminal → DexScreener → mock fallback). FlashValue highlights cells
+  // that actually change between polls; no fabricated random-walk movement.
+  const { data } = useSWR<{ tokens?: Token[] }>("/api/tokens", fetcher, {
+    refreshInterval: 15000,
+  });
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRows((prev) =>
-        prev.map((t) => ({
-          ...t,
-          price: t.price * (1 + (Math.random() - 0.498) * 0.004),
-          change: t.change + (Math.random() - 0.5) * 0.08,
-          volume: t.volume * (1 + (Math.random() - 0.49) * 0.01),
-        }))
-      );
-    }, 1800);
-    return () => clearInterval(interval);
-  }, []);
+  const rows: Token[] = (data?.tokens?.length ? data.tokens : marketTokens)
+    .slice(0, 8)
+    .map((t) => ({ ...t, color: t.color ?? "#00FFA3" }));
 
   return (
-    <section id="market" className="relative py-32 px-4 sm:px-6 overflow-hidden">
+    <section id="market" className="relative py-20 sm:py-28 lg:py-32 px-4 sm:px-6 overflow-hidden">
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-accent-green/20 to-transparent" />
 
       <div className="max-w-7xl mx-auto">
@@ -89,7 +87,7 @@ export default function MarketPreview() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6 }}
-          className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 mb-12"
+          className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 mb-8 sm:mb-12"
         >
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-accent-green/20 text-xs font-mono text-accent-green mb-6">
@@ -134,7 +132,7 @@ export default function MarketPreview() {
             const positive = token.change >= 0;
             return (
               <motion.div
-                key={token.symbol}
+                key={token.address || token.symbol}
                 initial={{ opacity: 0, x: -10 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}

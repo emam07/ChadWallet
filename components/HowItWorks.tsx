@@ -43,7 +43,7 @@ export default function HowItWorks() {
   const lineHeight = useTransform(scrollYProgress, [0.1, 0.8], ["0%", "100%"]);
 
   return (
-    <section id="how-it-works" className="relative py-32 px-4 sm:px-6 overflow-hidden" ref={containerRef}>
+    <section id="how-it-works" className="relative py-20 sm:py-28 lg:py-32 px-4 sm:px-6 overflow-hidden" ref={containerRef}>
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-accent-purple/20 to-transparent" />
 
       <div className="max-w-5xl mx-auto">
@@ -52,7 +52,7 @@ export default function HowItWorks() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-20"
+          className="text-center mb-12 sm:mb-20"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-accent-purple/20 text-xs font-mono text-accent-purple mb-6">
             SIMPLE AS 1-2-3

@@ -61,7 +61,7 @@ function CountUp({
 
 export default function Stats() {
   return (
-    <section className="relative py-28 px-4 sm:px-6 overflow-hidden">
+    <section className="relative py-16 sm:py-24 lg:py-28 px-4 sm:px-6 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-accent-green/[0.02] via-accent-purple/[0.03] to-transparent pointer-events-none" />
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-accent-purple/20 to-transparent" />
@@ -72,7 +72,7 @@ export default function Stats() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-10 sm:mb-16"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-accent-green/20 text-xs font-mono text-accent-green mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse" />
@@ -83,7 +83,7 @@ export default function Stats() {
             <span className="text-gradient-green">ChadWallet</span>
           </h2>
           <p className="text-white/30 text-base mt-4 font-mono">
-            Real-time stats from Solana mainnet
+            Built on Solana · routed through Jupiter for best execution
           </p>
         </motion.div>
 

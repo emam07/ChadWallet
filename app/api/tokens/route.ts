@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import { tokens as mockTokens } from "@/lib/data";
 import { getTokenPairs } from "@/lib/dexscreener";
+import { getTrendingTokens } from "@/lib/geckoterminal";
+import { isValidSolanaAddress } from "@/lib/validation";
 import { num } from "@/lib/num";
 
-// Trending Solana tokens. DexScreener has no public "trending" endpoint, so we
-// price a curated universe of liquid Solana tokens (lib/data.ts) via DexScreener
-// in one batched call and rank them by real 24h volume. Falls back to the static
-// mock token list when DexScreener is unreachable.
+// Trade-page token list. Primary source is GeckoTerminal's live "top pools"
+// ranking (real trending Solana tokens by 24h volume — Option B). If that is
+// unreachable we price the curated universe (lib/data.ts) via DexScreener, and
+// if that also fails we serve the static mock list. The list always renders.
 export async function GET() {
+  // 1) Live trending tokens from GeckoTerminal, ranked by 24h volume.
+  const trending = await getTrendingTokens(50);
+  // Guard the route's address invariant even with live upstream data.
+  const liveTokens = trending.filter((t) => isValidSolanaAddress(t.address));
+  if (liveTokens.length) return NextResponse.json({ tokens: liveTokens });
+
+  // 2) Fallback: price the curated universe via DexScreener, rank by volume.
   // Dedupe the curated universe (lib/data.ts has a couple of repeats).
   const universe = Array.from(new Set(mockTokens.map((t) => t.address)));
 
@@ -39,6 +48,6 @@ export async function GET() {
     if (tokens.length) return NextResponse.json({ tokens });
   }
 
-  // Fallback to mock data
+  // 3) Fallback to mock data.
   return NextResponse.json({ tokens: mockTokens });
 }

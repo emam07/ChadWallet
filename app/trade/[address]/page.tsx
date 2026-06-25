@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { usePrivy } from "@privy-io/react-auth";
 import useSWR from "swr";
 import Image from "next/image";
-import { ArrowLeft, TrendingUp, TrendingDown, Copy, ExternalLink } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Copy, ExternalLink, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TrendingList } from "@/components/trade/TrendingList";
 import { TradesFeed } from "@/components/trade/TradesFeed";
@@ -151,6 +151,7 @@ export default function TradePage({
 }) {
   const { address } = use(params);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [swapOpen, setSwapOpen] = useState(false);
   const { ready, authenticated, login } = usePrivy();
   const userLoggedIn = ready && authenticated;
 
@@ -195,12 +196,20 @@ export default function TradePage({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Mobile: trending toggle */}
+          {/* Mobile (below tablet): trending toggle */}
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="lg:hidden px-3 py-1.5 text-xs text-white/60 border border-white/10 rounded-lg hover:text-white hover:border-white/20 transition-all"
+            className="md:hidden px-3 py-1.5 text-xs text-white/60 border border-white/10 rounded-lg hover:text-white hover:border-white/20 transition-all"
           >
             Trending
+          </button>
+
+          {/* Mobile (below tablet): Buy/Sell — opens swap sheet, then returns to chart */}
+          <button
+            onClick={() => setSwapOpen(true)}
+            className="md:hidden px-4 py-1.5 text-xs font-bold bg-accent-green text-black rounded-lg hover:bg-accent-green/90 transition-all"
+          >
+            Buy / Sell
           </button>
 
           {userLoggedIn ? (
@@ -221,17 +230,17 @@ export default function TradePage({
 
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar — trending tokens */}
+        {/* Left sidebar — trending tokens. Visible from tablet (md) up, narrower on tablet. */}
         <aside
           className={cn(
-            "w-[268px] shrink-0 border-r border-white/[0.06] bg-bg-primary overflow-hidden flex-col",
-            "hidden lg:flex",
-            // Mobile overlay
+            "w-[200px] lg:w-[268px] shrink-0 border-r border-white/[0.06] bg-bg-primary overflow-hidden flex-col",
+            "hidden md:flex",
+            // Mobile overlay (below tablet)
             sidebarOpen && "fixed inset-0 z-30 flex w-full sm:w-80 bg-bg-primary/95 backdrop-blur-sm"
           )}
         >
           {sidebarOpen && (
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] lg:hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] md:hidden">
               <span className="text-sm font-semibold">Trending</span>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -247,7 +256,7 @@ export default function TradePage({
         {/* Mobile sidebar overlay backdrop */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-20 bg-black/60 lg:hidden"
+            className="fixed inset-0 z-20 bg-black/60 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -258,7 +267,7 @@ export default function TradePage({
           <TokenHeader address={address} tokenData={tokenData} />
 
           {/* Chart */}
-          <div className="flex-[0_0_340px] border-b border-white/[0.06]">
+          <div className="flex-[0_0_280px] sm:flex-[0_0_320px] lg:flex-[0_0_340px] border-b border-white/[0.06]">
             <PriceChart address={address} />
           </div>
 
@@ -268,8 +277,8 @@ export default function TradePage({
           </div>
         </main>
 
-        {/* Right sidebar — swap panel */}
-        <aside className="w-[300px] xl:w-[320px] shrink-0 border-l border-white/[0.06] bg-bg-secondary/30 overflow-hidden hidden md:flex flex-col">
+        {/* Right sidebar — swap panel. Narrower on tablet so all three panels fit. */}
+        <aside className="w-[260px] lg:w-[300px] xl:w-[320px] shrink-0 border-l border-white/[0.06] bg-bg-secondary/30 overflow-hidden hidden md:flex flex-col">
           <div className="px-4 py-3 border-b border-white/[0.06]">
             <span className="text-sm font-semibold text-white">Trade</span>
             <span className="ml-2 text-xs text-white/30">via Jupiter</span>
@@ -284,20 +293,41 @@ export default function TradePage({
         </aside>
       </div>
 
-      {/* Mobile bottom: swap panel */}
-      <div className="md:hidden border-t border-white/[0.06] bg-bg-secondary/80 backdrop-blur-sm max-h-[50vh] overflow-y-auto">
-        <div className="px-4 py-2 border-b border-white/[0.06]">
-          <span className="text-xs font-semibold text-white">Trade</span>
-          <span className="ml-2 text-[10px] text-white/30">via Jupiter</span>
+      {/* Mobile: swap bottom-sheet — opens on demand, dismiss to return to chart */}
+      {swapOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          {/* Backdrop — tap to go back to chart */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSwapOpen(false)}
+          />
+          {/* Sheet */}
+          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-2xl border-t border-white/[0.08] bg-bg-secondary shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+              <div>
+                <span className="text-sm font-semibold text-white">Trade</span>
+                <span className="ml-2 text-[10px] text-white/30">via Jupiter</span>
+              </div>
+              <button
+                onClick={() => setSwapOpen(false)}
+                className="flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Close
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <SwapPanel
+                address={address}
+                symbol={symbol}
+                price={price}
+                userLoggedIn={userLoggedIn}
+                onLogin={handleLogin}
+              />
+            </div>
+          </div>
         </div>
-        <SwapPanel
-          address={address}
-          symbol={symbol}
-          price={price}
-          userLoggedIn={userLoggedIn}
-          onLogin={handleLogin}
-        />
-      </div>
+      )}
     </div>
   );
 }

@@ -145,8 +145,66 @@ describe('lib/geckoterminal client', () => {
   });
 });
 
-describe('GET /api/tokens (DexScreener path)', () => {
-  it('maps pairs, passes through 24h percent, and ranks by volume', async () => {
+/** One page of GeckoTerminal's top-pools response (base tokens side-loaded). */
+function geckoPoolsPage(
+  rows: Array<{ id: string; address: string; symbol: string; name: string; volume: string; price?: string; change?: string; mc?: string }>
+) {
+  return {
+    data: rows.map((r) => ({
+      attributes: {
+        base_token_price_usd: r.price ?? '1',
+        price_change_percentage: { h24: r.change ?? '0' },
+        volume_usd: { h24: r.volume },
+        market_cap_usd: r.mc ?? '0',
+      },
+      relationships: { base_token: { data: { id: r.id } } },
+    })),
+    included: rows.map((r) => ({
+      id: r.id,
+      type: 'token',
+      attributes: { address: r.address, name: r.name, symbol: r.symbol, image_url: null },
+    })),
+  };
+}
+
+describe('GET /api/tokens (GeckoTerminal trending path)', () => {
+  it('returns live trending tokens ranked by 24h volume', async () => {
+    mockJsonOnce(
+      geckoPoolsPage([
+        { id: `solana_${VALID_ADDRESS}`, address: VALID_ADDRESS, symbol: 'SOL', name: 'Wrapped SOL', volume: '1000000', price: '150.5', change: '5.2' },
+        { id: `solana_${BONK_ADDRESS}`, address: BONK_ADDRESS, symbol: 'BONK', name: 'Bonk', volume: '9000000', price: '0.00002', change: '12.34' },
+      ])
+    );
+    const { GET } = await import('@/app/api/tokens/route');
+    const data = await (await GET()).json();
+    // ranked by volume DESC → BONK first
+    expect(data.tokens[0].symbol).toBe('BONK');
+    expect(data.tokens[0].change).toBeCloseTo(12.34);
+    expect(data.tokens[1].symbol).toBe('SOL');
+    expect(data.tokens[1].price).toBe(150.5);
+  });
+
+  it('only returns addresses that pass Solana validation', async () => {
+    const { isValidSolanaAddress } = await import('@/lib/validation');
+    mockJsonOnce(
+      geckoPoolsPage([
+        { id: `solana_${VALID_ADDRESS}`, address: VALID_ADDRESS, symbol: 'SOL', name: 'Wrapped SOL', volume: '1000000' },
+        // garbage address must be filtered out
+        { id: 'solana_bad', address: 'not a valid address!!', symbol: 'BAD', name: 'Bad', volume: '5000000' },
+      ])
+    );
+    const { GET } = await import('@/app/api/tokens/route');
+    const data = await (await GET()).json();
+    for (const token of data.tokens) {
+      expect(isValidSolanaAddress(token.address)).toBe(true);
+    }
+    expect(data.tokens.some((t: { symbol: string }) => t.symbol === 'BAD')).toBe(false);
+  });
+});
+
+describe('GET /api/tokens (DexScreener fallback path)', () => {
+  it('falls back to DexScreener when GeckoTerminal has no pools', async () => {
+    mockJsonOnce({ data: [] }); // GeckoTerminal top-pools: empty
     mockJsonOnce({
       pairs: [
         dexPair({ priceUsd: '150.5', priceChange: { h24: 5.2 }, volume: { h24: 1_000_000 } }),
@@ -165,8 +223,9 @@ describe('GET /api/tokens (DexScreener path)', () => {
     expect(data.tokens[1].price).toBe(150.5);
   });
 
-  it('falls back to mock tokens when DexScreener returns no pairs', async () => {
-    mockJsonOnce({ pairs: [] });
+  it('falls back to mock tokens when both upstreams return nothing', async () => {
+    mockJsonOnce({ data: [] }); // GeckoTerminal: empty
+    mockJsonOnce({ pairs: [] }); // DexScreener: empty
     const { GET } = await import('@/app/api/tokens/route');
     const data = await (await GET()).json();
     expect(data.tokens.length).toBeGreaterThan(0);

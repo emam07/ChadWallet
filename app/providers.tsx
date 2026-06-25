@@ -20,13 +20,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // Privy embedded wallets require a secure context (HTTPS, or localhost/
+  // 127.0.0.1 which browsers treat as secure). Opening the dev server over a
+  // LAN IP (http://192.168.x.x:3000) is NOT a secure context, so provisioning
+  // a wallet throws "Embedded wallet is only available over HTTPS". Gate
+  // creation on isSecureContext so auth still works (login only) over plain
+  // HTTP; embedded wallets activate automatically once served securely.
+  const secureContext =
+    typeof window === "undefined" ? true : window.isSecureContext;
+
   return (
     <PrivyProvider
       appId={appId}
       config={{
         // Each method listed here must also be enabled in the Privy
-        // dashboard (Login methods) for the app id above.
-        loginMethods: ["email", "google", "apple"],
+        // dashboard (Login methods) for the app id above. Apple is omitted
+        // until Apple OAuth credentials are configured in the dashboard;
+        // listing it here would render a sign-in button that always fails.
+        loginMethods: ["email", "google"],
         appearance: {
           theme: "dark",
           accentColor: "#00FFA3",
@@ -35,7 +46,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
         embeddedWallets: {
           solana: {
-            createOnLogin: "users-without-wallets",
+            createOnLogin: secureContext ? "users-without-wallets" : "off",
           },
         },
       }}

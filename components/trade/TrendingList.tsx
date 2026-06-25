@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { TrendingUp, TrendingDown, Search, Flame } from "lucide-react";
+import { TrendingUp, TrendingDown, Search, Flame, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tokens as mockTokens } from "@/lib/data";
+
+const PAGE_SIZE = 15;
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -40,6 +42,7 @@ export function TrendingList({
   currentAddress: string;
 }) {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
   const { data } = useSWR("/api/tokens", fetcher, { refreshInterval: 30000 });
   const allTokens: TokenItem[] = data?.tokens ?? mockTokens;
 
@@ -50,6 +53,18 @@ export function TrendingList({
           t.name.toLowerCase().includes(query.toLowerCase())
       )
     : allTokens;
+
+  // Paginate 15 per page (the last page may hold fewer). Clamp the active page
+  // so it stays valid as the live list / search results change size underneath.
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const start = safePage * PAGE_SIZE;
+  const pageTokens = filtered.slice(start, start + PAGE_SIZE);
+
+  const onSearch = (value: string) => {
+    setQuery(value);
+    setPage(0);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -65,7 +80,7 @@ export function TrendingList({
             type="text"
             placeholder="Search tokens..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => onSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-2 text-xs bg-white/[0.04] border border-white/[0.06] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent-green/40"
           />
         </div>
@@ -73,13 +88,19 @@ export function TrendingList({
 
       {/* Token list */}
       <div className="flex-1 overflow-y-auto">
-        {filtered.map((token, i) => {
+        {pageTokens.length === 0 && (
+          <div className="px-4 py-8 text-center text-xs text-white/30">
+            No tokens found
+          </div>
+        )}
+        {pageTokens.map((token, i) => {
+          const rank = start + i; // global rank across pages (0-based)
           const isActive = token.address === currentAddress;
           const isPositive = (token.change ?? 0) >= 0;
 
           return (
             <a
-              key={`${token.address ?? ""}-${i}`}
+              key={`${token.address ?? ""}-${rank}`}
               href={`/trade/${token.address}`}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 hover:bg-white/[0.04] transition-colors border-b border-white/[0.03] cursor-pointer",
@@ -109,9 +130,9 @@ export function TrendingList({
                     {token.symbol?.[0]}
                   </div>
                 )}
-                {i < 3 && (
+                {rank < 3 && (
                   <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center text-[9px] font-bold text-white">
-                    {i + 1}
+                    {rank + 1}
                   </div>
                 )}
               </div>
@@ -153,6 +174,31 @@ export function TrendingList({
           );
         })}
       </div>
+
+      {/* Pagination — 15 per page, last page may hold fewer. */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-t border-white/[0.06] shrink-0">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={safePage === 0}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-white/60 border border-white/10 rounded-md hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-white/60 disabled:hover:border-white/10"
+          >
+            <ChevronLeft className="w-3 h-3" />
+            Prev
+          </button>
+          <span className="text-[11px] font-mono text-white/40">
+            {safePage + 1} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={safePage >= totalPages - 1}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-white/60 border border-white/10 rounded-md hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-white/60 disabled:hover:border-white/10"
+          >
+            Next
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

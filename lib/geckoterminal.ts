@@ -8,6 +8,8 @@
 // Free tier is rate-limited (~30 req/min); data is real but can lag a little.
 // Every helper degrades gracefully (returns null) so routes fall back to mock.
 
+import { num } from "@/lib/num";
+
 export const GECKOTERMINAL_API = "https://api.geckoterminal.com/api/v2";
 
 // GeckoTerminal network slug for Solana.
@@ -219,4 +221,130 @@ export async function getPoolTrades(poolAddress: string): Promise<PoolTrade[]> {
         t.tokenAmount > 0 &&
         Number.isFinite(t.timestamp)
     );
+}
+
+// ── Trending tokens ──────────────────────────────────────────────────────────
+//
+// GeckoTerminal's "top pools" endpoint returns the network's most-active pools,
+// already ranked. We page through it, resolve each pool's base token from the
+// `included` side-load, dedupe to one row per token (keeping its busiest pool),
+// and rank by real 24h volume. This is the live, key-less source of truth for
+// the Trade page's token list (see app/api/tokens/route.ts).
+
+/** A live token row for the trending list, shaped like lib/data Token. */
+export interface TrendingToken {
+  symbol: string;
+  name: string;
+  address: string;
+  price: number;
+  change: number;
+  volume: number;
+  marketCap: number;
+  logoURI?: string;
+}
+
+interface PoolListResponse {
+  data?: Array<{
+    attributes?: {
+      base_token_price_usd?: string | null;
+      price_change_percentage?: { h24?: string | null } | null;
+      volume_usd?: { h24?: string | null } | null;
+      market_cap_usd?: string | null;
+      fdv_usd?: string | null;
+    } | null;
+    relationships?: {
+      base_token?: { data?: { id?: string | null } | null } | null;
+    } | null;
+  }> | null;
+  included?: Array<{
+    id?: string | null;
+    type?: string | null;
+    attributes?: {
+      address?: string | null;
+      name?: string | null;
+      symbol?: string | null;
+      image_url?: string | null;
+    } | null;
+  }> | null;
+}
+
+/** GeckoTerminal uses "missing.png" as a placeholder when a token has no logo. */
+function cleanLogo(url: string | null | undefined): string | undefined {
+  return url && !url.includes("missing") ? url : undefined;
+}
+
+/**
+ * Parse one page of the top-pools response into token rows, merging into
+ * `byAddress` (keyed by lowercased mint). A token can back several pools, so we
+ * keep the row from its highest-volume pool. Exported for unit testing.
+ */
+export function mergeTrendingPage(
+  data: PoolListResponse | null,
+  byAddress: Map<string, TrendingToken>
+): void {
+  if (!data?.data?.length) return;
+
+  // Index the side-loaded token metadata by GeckoTerminal id ("solana_<mint>").
+  const meta = new Map<
+    string,
+    { address: string; name: string; symbol: string; logoURI?: string }
+  >();
+  for (const inc of data.included ?? []) {
+    if (inc?.type !== "token" || !inc.id) continue;
+    const a = inc.attributes ?? {};
+    if (!a.address) continue;
+    meta.set(inc.id, {
+      address: a.address,
+      name: a.name ?? a.symbol ?? "Unknown",
+      symbol: a.symbol ?? "???",
+      logoURI: cleanLogo(a.image_url),
+    });
+  }
+
+  for (const pool of data.data) {
+    const id = pool?.relationships?.base_token?.data?.id;
+    if (!id) continue;
+    const m = meta.get(id);
+    if (!m) continue;
+
+    const volume = num(pool.attributes?.volume_usd?.h24);
+    const key = m.address.toLowerCase();
+    const existing = byAddress.get(key);
+    if (existing && existing.volume >= volume) continue;
+
+    byAddress.set(key, {
+      symbol: m.symbol,
+      name: m.name,
+      address: m.address,
+      price: num(pool.attributes?.base_token_price_usd),
+      change: num(pool.attributes?.price_change_percentage?.h24),
+      volume,
+      marketCap: num(pool.attributes?.market_cap_usd ?? pool.attributes?.fdv_usd),
+      logoURI: m.logoURI,
+    });
+  }
+}
+
+/**
+ * Live trending Solana tokens, ranked by 24h volume. Pages through the top-pools
+ * endpoint until it has `limit` unique tokens (or runs out / hits the page cap),
+ * then returns the top `limit`. Returns [] on total failure (→ caller falls back
+ * to the curated/mock list), never throws.
+ */
+export async function getTrendingTokens(limit = 50): Promise<TrendingToken[]> {
+  const maxPages = 5; // 20 pools/page; ~5 pages comfortably yields 50+ tokens.
+  const byAddress = new Map<string, TrendingToken>();
+
+  for (let page = 1; page <= maxPages && byAddress.size < limit; page++) {
+    const data = await geckoFetch<PoolListResponse>(
+      `/networks/${SOLANA_NETWORK}/pools?include=base_token&page=${page}&sort=h24_volume_usd_desc`,
+      30
+    );
+    if (!data?.data?.length) break;
+    mergeTrendingPage(data, byAddress);
+  }
+
+  return Array.from(byAddress.values())
+    .sort((a, b) => b.volume - a.volume)
+    .slice(0, limit);
 }

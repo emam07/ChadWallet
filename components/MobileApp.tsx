@@ -24,11 +24,11 @@ export default function MobileApp() {
   const [active, setActive] = useState(0);
 
   return (
-    <section className="relative py-32 px-4 sm:px-6 overflow-hidden">
+    <section className="relative py-20 sm:py-28 lg:py-32 px-4 sm:px-6 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-accent-green/[0.02] to-transparent pointer-events-none" />
 
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
+        <div className="flex flex-col lg:flex-row items-center gap-10 sm:gap-16 lg:gap-24">
           {/* Phone showcase */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}

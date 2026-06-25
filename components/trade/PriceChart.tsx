@@ -188,7 +188,7 @@ export function PriceChart({ address }: { address: string }) {
       </div>
 
       {/* Chart */}
-      <div ref={chartContainerRef} className="flex-1 min-h-[300px]" />
+      <div ref={chartContainerRef} className="flex-1 min-h-[220px] sm:min-h-[300px]" />
     </div>
   );
 }

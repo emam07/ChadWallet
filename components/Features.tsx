@@ -234,7 +234,7 @@ function FlowShowcase() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.7 }}
-      className="mt-20"
+      className="mt-14 sm:mt-20"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -423,7 +423,7 @@ function FlowShowcase() {
 
 export default function Features() {
   return (
-    <section id="features" className="relative py-32 px-4 sm:px-6 overflow-hidden">
+    <section id="features" className="relative py-20 sm:py-28 lg:py-32 px-4 sm:px-6 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-accent-purple/[0.02] to-transparent pointer-events-none" />
 
       <div className="max-w-7xl mx-auto">
@@ -432,7 +432,7 @@ export default function Features() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-20"
+          className="text-center mb-12 sm:mb-20"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-accent-green/20 text-xs font-mono text-accent-green mb-6">
             BUILT FOR WINNERS
@@ -446,7 +446,8 @@ export default function Features() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Mobile: horizontal snap strip that peeks the next card. sm+: 2-col grid. lg: 3-col grid. */}
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 pb-4 sm:pb-0">
           {features.map((feature, i) => {
             const Icon = feature.icon;
             return (
@@ -458,7 +459,7 @@ export default function Features() {
                 viewport={{ once: true, margin: "-60px" }}
                 variants={cardVariants}
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="group relative p-6 rounded-2xl glass border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 cursor-default overflow-hidden"
+                className="group relative snap-start shrink-0 w-[80%] sm:w-auto p-6 rounded-2xl glass border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 cursor-default overflow-hidden"
               >
                 <div
                   className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
