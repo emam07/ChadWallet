@@ -20,15 +20,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Privy embedded wallets require a secure context (HTTPS, or localhost/
-  // 127.0.0.1 which browsers treat as secure). Opening the dev server over a
-  // LAN IP (http://192.168.x.x:3000) is NOT a secure context, so provisioning
-  // a wallet throws "Embedded wallet is only available over HTTPS". Gate
-  // creation on isSecureContext so auth still works (login only) over plain
-  // HTTP; embedded wallets activate automatically once served securely.
-  const secureContext =
-    typeof window === "undefined" ? true : window.isSecureContext;
-
   return (
     <PrivyProvider
       appId={appId}
@@ -44,10 +35,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
           logo: "/logo/dark.png",
           walletChainType: "solana-only",
         },
+        // Do NOT auto-provision an embedded wallet on login. The Privy app is
+        // configured server-side as "user-controlled-server-wallets-only" with
+        // Solana createOnLogin = "off"; requesting client-side creation here
+        // ("users-without-wallets") conflicts with that and breaks the login
+        // flow on HTTPS (the deployed site), while appearing to work over
+        // plain-HTTP localhost. Keeping this "off" matches the dashboard, so
+        // email/Google login completes cleanly. Wallet provisioning is wired in
+        // as its own step once the app actually uses on-chain balances.
         embeddedWallets: {
-          solana: {
-            createOnLogin: secureContext ? "users-without-wallets" : "off",
-          },
+          solana: { createOnLogin: "off" },
         },
       }}
     >

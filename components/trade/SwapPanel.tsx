@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import useSWR from "swr";
 import { ArrowDown, Settings, Zap, AlertTriangle, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,8 @@ interface SwapPanelProps {
 
 const SOL_ADDRESS = "So11111111111111111111111111111111111111112";
 const SLIPPAGE_OPTIONS = [0.5, 1, 2, 5];
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function formatPrice(price: number) {
   if (!price) return "0.00";
@@ -41,44 +44,55 @@ export function SwapPanel({
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [reviewing, setReviewing] = useState(false);
 
-  // Jupiter quote fetcher
-  const fetchQuote = useCallback(async (amount: string) => {
-    if (!amount || parseFloat(amount) <= 0 || !price) return;
-    setLoadingQuote(true);
-    try {
-      const inputMint = mode === "buy" ? SOL_ADDRESS : address;
-      const outputMint = mode === "buy" ? address : SOL_ADDRESS;
-      const lamports = Math.floor(parseFloat(amount) * 1e9);
+  // SOL's USD price — needed to size a swap, since one leg is always SOL. Both
+  // legs are priced in USD so the estimate is decimal-agnostic (SPL tokens use
+  // varying decimals: BONK 5, USDC 6, SOL 9 — converting Jupiter's raw lamport
+  // amounts client-side without each token's decimals is unreliable).
+  const { data: solData } = useSWR(`/api/token/${SOL_ADDRESS}`, fetcher, {
+    refreshInterval: 30000,
+  });
+  const solPrice = (solData?.token?.price as number) ?? 0;
 
-      const res = await fetch(
-        `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${lamports}&slippageBps=${slippage * 100}`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setQuote({
-          outAmount: (parseFloat(data.outAmount) / 1e9).toFixed(6),
-          priceImpact: parseFloat(data.priceImpactPct ?? "0") * 100,
-        });
+  const fetchQuote = useCallback(async (amount: string) => {
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0 || !price) return;
+    setLoadingQuote(true);
+
+    // USD-based estimate (correct in magnitude for any token's decimals):
+    //   buy:  SOL paid → tokens = (amt · solPrice) / tokenPrice
+    //   sell: tokens sold → SOL = (amt · tokenPrice) / solPrice
+    // If SOL's price hasn't loaded yet, fall back to a 1:price ratio.
+    const estOut =
+      mode === "buy"
+        ? (amt * (solPrice || price)) / price
+        : (amt * price) / (solPrice || price);
+
+    // Pull the live price-impact figure from Jupiter. The input leg is SOL (9
+    // decimals) only in buy mode, so we just enrich the buy estimate; the USD
+    // estimate above stands either way. Never throws — defaults on failure.
+    let priceImpact = 0.1;
+    try {
+      if (mode === "buy") {
+        const lamports = Math.floor(amt * 1e9);
+        const res = await fetch(
+          `https://quote-api.jup.ag/v6/quote?inputMint=${SOL_ADDRESS}&outputMint=${address}&amount=${lamports}&slippageBps=${slippage * 100}`,
+          { signal: AbortSignal.timeout(5000) }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          priceImpact = parseFloat(data.priceImpactPct ?? "0") * 100;
+        }
       }
     } catch {
-      // Use estimated output based on price
-      const amt = parseFloat(amount);
-      if (mode === "buy") {
-        setQuote({
-          outAmount: (amt / price).toFixed(6),
-          priceImpact: 0.1,
-        });
-      } else {
-        setQuote({
-          outAmount: (amt * price).toFixed(4),
-          priceImpact: 0.1,
-        });
-      }
-    } finally {
-      setLoadingQuote(false);
+      // Keep the default price impact — the USD estimate is still shown.
     }
-  }, [mode, address, price, slippage]);
+
+    setQuote({
+      outAmount: estOut.toFixed(mode === "buy" ? 6 : 4),
+      priceImpact,
+    });
+    setLoadingQuote(false);
+  }, [mode, address, price, slippage, solPrice]);
 
   useEffect(() => {
     const t = setTimeout(() => fetchQuote(inputAmount), 400);
