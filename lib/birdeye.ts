@@ -87,8 +87,11 @@ function parseExtensions(ext: unknown): {
  * configured (→ caller serves a neutral "unknown token" shape).
  */
 export async function getTokenOverview(address: string): Promise<TokenOverview | null> {
+  // v1 `/defi/token_overview` is the overview endpoint our API tier exposes —
+  // the v3 path returns "Not found". It carries the full per-window price,
+  // volume, txn and holder data the trade page + swap panel consume.
   const res = await birdeyeFetch<OverviewResponse>(
-    `/defi/v3/token/overview?address=${address}`,
+    `/defi/token_overview?address=${address}`,
     10
   );
   const d = res?.data;
@@ -101,9 +104,9 @@ export async function getTokenOverview(address: string): Promise<TokenOverview |
     name: (d.name as string) || "Unknown Token",
     price: num(d.price),
     priceChange24hPercent: num(d.priceChange24hPercent),
-    // BirdEye has no 5m bucket; 30m is the closest short window for the "5M" chip.
+    // token_overview exposes a real 5m bucket (priceChange5mPercent).
     priceChange: {
-      m5: num(d.priceChange30mPercent),
+      m5: num(d.priceChange5mPercent),
       h1: num(d.priceChange1hPercent),
       h6: num(d.priceChange6hPercent),
       h24: num(d.priceChange24hPercent),
@@ -153,18 +156,19 @@ function toTrendingToken(t: Record<string, unknown>): TrendingToken {
 }
 
 /**
- * Live trending Solana tokens, ranked by BirdEye's own rank. The trending
- * endpoint caps at 20 rows/request, so we page via `offset` until we have
- * `limit` tokens (or run out). Returns [] on total failure / no key configured
- * (→ caller falls back to the curated/mock list), never throws.
+ * Live trending Solana tokens, ranked by BirdEye's own rank. Uses the v1
+ * `/defi/token_trending` endpoint (the v3 path returns "Not found"), paging via
+ * `offset` until we have `limit` tokens (or run out / hit a rate limit, in which
+ * case we return what we have so far). Returns [] on total failure / no key
+ * configured (→ caller falls back to the curated/mock list), never throws.
  */
-export async function getTrendingTokens(limit = 50): Promise<TrendingToken[]> {
-  const PAGE = 20; // BirdEye trending limit cap per request.
+export async function getTrendingTokens(limit = 100): Promise<TrendingToken[]> {
+  const PAGE = 50; // Rows per request (the endpoint accepts up to 50).
   const out: TrendingToken[] = [];
 
   for (let offset = 0; out.length < limit; offset += PAGE) {
     const res = await birdeyeFetch<TrendingResponse>(
-      `/defi/v3/token/trending?sort_by=rank&sort_type=asc&offset=${offset}&limit=${PAGE}`,
+      `/defi/token_trending?sort_by=rank&sort_type=asc&offset=${offset}&limit=${PAGE}`,
       30
     );
     const rows = res?.data?.tokens;
@@ -177,6 +181,53 @@ export async function getTrendingTokens(limit = 50): Promise<TrendingToken[]> {
   }
 
   return out.slice(0, limit);
+}
+
+// ── Token search ─────────────────────────────────────────────────────────────
+
+interface SearchResponse {
+  data?: {
+    items?: Array<{ type?: string; result?: Array<Record<string, unknown>> | null }> | null;
+  } | null;
+}
+
+/** Map a BirdEye search hit (snake_case fields) to a TrendingToken. */
+function toSearchToken(r: Record<string, unknown>): TrendingToken {
+  return {
+    symbol: (r.symbol as string) || "???",
+    name: (r.name as string) || (r.symbol as string) || "Unknown",
+    address: r.address as string,
+    price: num(r.price),
+    change: num(r.price_change_24h_percent),
+    volume: num(r.volume_24h_usd),
+    marketCap: num(r.market_cap ?? r.fdv),
+    logoURI: (r.logo_uri as string) || (r.logoURI as string) || undefined,
+  };
+}
+
+/**
+ * Search tokens by name / symbol / address against BirdEye's full universe (not
+ * just the trending list). Ranked by 24h volume. Returns [] on failure / no key
+ * (→ caller can fall back to a local match), never throws.
+ */
+export async function searchTokens(keyword: string, limit = 30): Promise<TrendingToken[]> {
+  const res = await birdeyeFetch<SearchResponse>(
+    `/defi/v3/search?keyword=${encodeURIComponent(keyword)}&target=token&search_mode=fuzzy` +
+      `&sort_by=volume_24h_usd&sort_type=desc&offset=0&limit=${limit}`,
+    30
+  );
+
+  const items = res?.data?.items;
+  if (!items?.length) return [];
+
+  const out: TrendingToken[] = [];
+  for (const it of items) {
+    if (it.type !== "token" || !Array.isArray(it.result)) continue;
+    for (const r of it.result) {
+      if (typeof r.address === "string") out.push(toSearchToken(r));
+    }
+  }
+  return out;
 }
 
 // ── OHLCV candles ──────────────────────────────────────────────────────────
@@ -276,12 +327,22 @@ export async function getTokenTrades(address: string): Promise<TokenTrade[]> {
     .map((t): TokenTrade => {
       const owner = typeof t.owner === "string" ? t.owner : null;
       const ts = num(t.blockUnixTime);
+      // A swap has two legs (base/quote). The queried token is whichever leg's
+      // address matches; its uiAmount is the token amount and tokenPrice its USD
+      // price, so value = amount × price. (The raw item has no flat
+      // price/amount/value fields — those were the old, broken mapping.)
+      const base = t.base as Record<string, unknown> | undefined;
+      const quote = t.quote as Record<string, unknown> | undefined;
+      const tokenSide =
+        base?.address === address ? base : quote?.address === address ? quote : base;
+      const price = num(t.tokenPrice ?? tokenSide?.price);
+      const amount = Math.abs(num(tokenSide?.uiAmount));
       return {
         txHash: (t.txHash as string) || "",
         type: t.side === "buy" ? "buy" : "sell",
-        price: num(t.price),
-        amount: num(t.tokenAmount),
-        value: num(t.volumeUSD),
+        price,
+        amount,
+        value: amount * price,
         maker: owner,
         timestamp: ts > 0 ? ts * 1000 : NaN,
       };

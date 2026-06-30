@@ -26,6 +26,9 @@ import { cn } from "@/lib/utils";
 import { TrendingList } from "@/components/trade/TrendingList";
 import { TradesFeed } from "@/components/trade/TradesFeed";
 import { SwapPanel } from "@/components/trade/SwapPanel";
+import { LeaderboardView } from "@/components/trade/LeaderboardView";
+import { AlertsView } from "@/components/trade/AlertsView";
+import { FeedView } from "@/components/trade/FeedView";
 import { tokens as mockTokens } from "@/lib/data";
 import logoSrc from "@/assets/logo/light.png";
 
@@ -55,9 +58,9 @@ function truncate(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-// Top-nav sections from the reference. "Tokens" is the live trading view; the
-// rest are styled tabs kept for layout parity (Chad Wallet is a single-surface
-// trading app — they don't route anywhere yet).
+// Top-nav sections. Each switches the main content in-place: "Tokens" is the
+// live trading dashboard, "Alerts" the price-alert manager, "Leaderboard" the
+// ranked token board, and "Feed" the live swap tape for the open token.
 const NAV_TABS = [
   { id: "alerts", label: "Alerts", icon: Bell },
   { id: "tokens", label: "Tokens", icon: Coins },
@@ -344,7 +347,15 @@ export default function TradePage({
         </div>
       </header>
 
-      {/* Main layout */}
+      {/* Main layout — the Tokens tab is the live trading dashboard; the other
+          nav sections each render their own full-width, data-backed view. */}
+      {activeTab !== "tokens" ? (
+        <div className="flex-1 overflow-y-auto">
+          {activeTab === "alerts" && <AlertsView currentAddress={address} />}
+          {activeTab === "leaderboard" && <LeaderboardView />}
+          {activeTab === "feed" && <FeedView address={address} symbol={symbol} />}
+        </div>
+      ) : (
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar — trending tokens. Visible from tablet (md) up, narrower on tablet. */}
         <aside
@@ -404,6 +415,7 @@ export default function TradePage({
           />
         </aside>
       </div>
+      )}
 
       {/* Mobile: swap bottom-sheet — opens on demand, dismiss to return to chart */}
       {swapOpen && (

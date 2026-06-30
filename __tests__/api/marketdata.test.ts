@@ -28,7 +28,7 @@ function overview(over: Record<string, unknown> = {}) {
       name: 'Wrapped SOL',
       price: 150.5,
       priceChange24hPercent: 5.2,
-      priceChange30mPercent: 0.1,
+      priceChange5mPercent: 0.1,
       priceChange1hPercent: 0.5,
       priceChange6hPercent: 2,
       v24hUSD: 1_000_000,
@@ -136,17 +136,23 @@ describe('lib/birdeye client', () => {
       data: {
         items: [
           {
-            txHash: 'sig1', side: 'buy', price: 1.25, tokenAmount: 400,
-            volumeUSD: 500, owner: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456', blockUnixTime: 1_700_000_000,
+            txHash: 'sig1', side: 'buy', tokenPrice: 1.25,
+            base: { address: VALID_ADDRESS, uiAmount: 400, price: 1.25 },
+            quote: { address: BONK_ADDRESS, uiAmount: 500, price: 1 },
+            owner: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456', blockUnixTime: 1_700_000_000,
           },
           // invalid: zero price → dropped
-          { txHash: 'sig2', side: 'sell', price: 0, tokenAmount: 10, volumeUSD: 0, owner: 'x', blockUnixTime: 1_700_000_060 },
+          {
+            txHash: 'sig2', side: 'sell', tokenPrice: 0,
+            base: { address: VALID_ADDRESS, uiAmount: 10, price: 0 }, owner: 'x', blockUnixTime: 1_700_000_060,
+          },
         ],
       },
     });
     const { getTokenTrades } = await import('@/lib/birdeye');
     const trades = await getTokenTrades(VALID_ADDRESS);
     expect(trades).toHaveLength(1);
+    // value = amount (400) × tokenPrice (1.25) = 500
     expect(trades[0]).toMatchObject({ type: 'buy', txHash: 'sig1', amount: 400, price: 1.25, value: 500 });
     expect(trades[0].timestamp).toBe(1_700_000_000 * 1000);
   });
@@ -219,8 +225,10 @@ describe('GET /api/trades/[address] (BirdEye path)', () => {
       data: {
         items: [
           {
-            txHash: 'sig1', side: 'buy', price: 1.25, tokenAmount: 400,
-            volumeUSD: 500, owner: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456', blockUnixTime: 1_700_000_000,
+            txHash: 'sig1', side: 'buy', tokenPrice: 1.25,
+            base: { address: VALID_ADDRESS, uiAmount: 400, price: 1.25 },
+            quote: { address: BONK_ADDRESS, uiAmount: 500, price: 1 },
+            owner: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456', blockUnixTime: 1_700_000_000,
           },
         ],
       },
@@ -256,5 +264,66 @@ describe('GET /api/ohlcv/[address] (BirdEye path)', () => {
     const { GET } = await import('@/app/api/ohlcv/[address]/route');
     const data = await (await GET(new Request(`http://localhost/api/ohlcv/${VALID_ADDRESS}?type=15m`), params(VALID_ADDRESS))).json();
     expect(data.candles.length).toBeGreaterThan(0);
+  });
+});
+
+/** A BirdEye v3 search response (data.items[].result[]). */
+function searchResponse(rows: Array<Record<string, unknown>>) {
+  return { data: { items: [{ type: 'token', result: rows }] } };
+}
+
+describe('lib/birdeye searchTokens', () => {
+  it('flattens search hits to the token shape', async () => {
+    mockJsonOnce(
+      searchResponse([
+        {
+          address: BONK_ADDRESS, symbol: 'BONK', name: 'Bonk', price: 0.00002,
+          price_change_24h_percent: 12.3, volume_24h_usd: 9_000_000, market_cap: 1_000_000,
+          logo_uri: 'https://logo/bonk.png',
+        },
+      ])
+    );
+    const { searchTokens } = await import('@/lib/birdeye');
+    const results = await searchTokens('bonk');
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      symbol: 'BONK', address: BONK_ADDRESS, price: 0.00002, change: 12.3, volume: 9_000_000, marketCap: 1_000_000,
+    });
+  });
+
+  it('returns [] when BirdEye yields no items', async () => {
+    mockJsonOnce({ data: { items: [] } });
+    const { searchTokens } = await import('@/lib/birdeye');
+    expect(await searchTokens('zzz')).toEqual([]);
+  });
+});
+
+describe('GET /api/search', () => {
+  it('returns live BirdEye hits for a keyword', async () => {
+    mockJsonOnce(
+      searchResponse([
+        {
+          address: BONK_ADDRESS, symbol: 'BONK', name: 'Bonk', price: 0.00002,
+          price_change_24h_percent: 12.3, volume_24h_usd: 9_000_000, market_cap: 1_000_000,
+        },
+      ])
+    );
+    const { GET } = await import('@/app/api/search/route');
+    const data = await (await GET(new Request('http://localhost/api/search?q=bonk'))).json();
+    expect(data.tokens.some((t: { symbol: string }) => t.symbol === 'BONK')).toBe(true);
+  });
+
+  it('falls back to a curated match when BirdEye returns nothing (e.g. "sol")', async () => {
+    mockJsonOnce({ data: { items: [] } });
+    const { GET } = await import('@/app/api/search/route');
+    const data = await (await GET(new Request('http://localhost/api/search?q=sol'))).json();
+    expect(data.tokens.some((t: { symbol: string }) => t.symbol === 'SOL')).toBe(true);
+  });
+
+  it('returns empty for a too-short query without calling BirdEye', async () => {
+    const { GET } = await import('@/app/api/search/route');
+    const data = await (await GET(new Request('http://localhost/api/search?q=s'))).json();
+    expect(data.tokens).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

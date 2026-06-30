@@ -42,7 +42,7 @@ function dedupeAndRank(rows: TokenRow[]): TokenRow[] {
 // unavailable (or no key is configured) we serve the static mock list, so the
 // list always renders.
 export async function GET() {
-  const trending = await getTrendingTokens(60);
+  const trending = await getTrendingTokens(100);
 
   // Guard the route's address invariant even with live upstream data.
   const merged = dedupeAndRank(

@@ -101,7 +101,20 @@ export function TrendingList({
   const { data } = useSWR("/api/tokens", fetcher, { refreshInterval: 30000 });
   const allTokens: TokenItem[] = data?.tokens ?? mockTokens;
 
-  // Apply the active sub-tab filter/sort.
+  // When the user types a query we hit BirdEye's full token universe via
+  // /api/search (not just a client-side filter of the trending list), so any
+  // token — not only the loaded ones — can be found and opened.
+  const trimmed = query.trim();
+  const isSearching = trimmed.length >= 2;
+  const { data: searchData } = useSWR(
+    isSearching ? `/api/search?q=${encodeURIComponent(trimmed)}` : null,
+    fetcher,
+    { keepPreviousData: true, dedupingInterval: 400 }
+  );
+  const searchLoading = isSearching && searchData === undefined;
+  const searchResults: TokenItem[] = searchData?.tokens ?? [];
+
+  // Apply the active sub-tab filter/sort (only relevant when not searching).
   const tabbed: TokenItem[] = (() => {
     switch (subTab) {
       case "watchlist":
@@ -116,13 +129,8 @@ export function TrendingList({
     }
   })();
 
-  const filtered = query
-    ? tabbed.filter(
-        (t) =>
-          t.symbol.toLowerCase().includes(query.toLowerCase()) ||
-          t.name.toLowerCase().includes(query.toLowerCase())
-      )
-    : tabbed;
+  // A live search overrides the sub-tab list with BirdEye's results.
+  const filtered = isSearching ? searchResults : tabbed;
 
   // Paginate 15 per page (the last page may hold fewer). Clamp the active page
   // so it stays valid as the live list / search results change size underneath.
@@ -165,9 +173,16 @@ export function TrendingList({
 
       {/* Token list */}
       <div className="flex-1 overflow-y-auto">
-        {pageTokens.length === 0 && (
+        {searchLoading && pageTokens.length === 0 && (
           <div className="px-4 py-8 text-center text-xs text-white/30">
-            {subTab === "watchlist"
+            Searching BirdEye…
+          </div>
+        )}
+        {!searchLoading && pageTokens.length === 0 && (
+          <div className="px-4 py-8 text-center text-xs text-white/30">
+            {isSearching
+              ? `No tokens found for "${trimmed}"`
+              : subTab === "watchlist"
               ? "No tokens watched yet — tap the ☆ on any token to add it."
               : "No tokens found"}
           </div>
