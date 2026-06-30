@@ -1,14 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { usePrivy } from "@privy-io/react-auth";
-import { useRouter } from "next/navigation";
+import { useLoginAndTrade } from "@/hooks/useLoginAndTrade";
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/chadwallet/id6757367474";
-
-// Default token the "Start trading" CTA opens once the user is signed in (SOL).
-const DEFAULT_TRADE_TOKEN = "So11111111111111111111111111111111111111112";
 
 // Stagger entrance (replaces the GSAP timeline in the spec with framer-motion,
 // already a project dependency — same effect: each element fades/rises in turn).
@@ -22,30 +17,11 @@ const fade = {
 };
 
 export default function Hero() {
-  const router = useRouter();
-  const { ready, authenticated, login } = usePrivy();
-  const [pendingTrade, setPendingTrade] = useState(false);
-
   // "Start trading" → sign in (if needed), then route to the trade dashboard.
-  const goTrade = useCallback(() => {
-    router.push(`/trade/${DEFAULT_TRADE_TOKEN}`);
-  }, [router]);
-
-  const handleStartTrading = useCallback(() => {
-    if (authenticated) {
-      goTrade();
-      return;
-    }
-    setPendingTrade(true);
-    if (ready) login();
-  }, [authenticated, ready, login, goTrade]);
-
-  useEffect(() => {
-    if (pendingTrade && authenticated) {
-      setPendingTrade(false);
-      goTrade();
-    }
-  }, [pendingTrade, authenticated, goTrade]);
+  // Shared hook survives the full-page OAuth redirect so the user always lands
+  // on the dashboard rather than back on this page.
+  const { authenticated, pending: pendingTrade, start: handleStartTrading } =
+    useLoginAndTrade();
 
   return (
     <section className="hero">

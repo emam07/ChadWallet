@@ -1,16 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { useRouter } from "next/navigation";
 import { LogOut, Menu, Wallet, X } from "lucide-react";
+import { useLoginAndTrade } from "@/hooks/useLoginAndTrade";
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/chadwallet/id6757367474";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
-
-// Default token the trade dashboard opens once the user signs in via the
-// navbar Login button (SOL) — matches Hero / CTA "Start trading".
-const DEFAULT_TRADE_TOKEN = "So11111111111111111111111111111111111111112";
 
 // NEXT_PUBLIC_* vars are inlined at build time, so this is a reliable signal on
 // both server and client (no hydration mismatch). If false in a deployed build,
@@ -28,22 +24,14 @@ function truncate(addr: string) {
 /** Dark-themed login / account control. Wallet-connect logic via Privy is
  *  preserved verbatim from the previous AuthButton — only the styling changed. */
 function LoginControl({ onAction }: { onAction?: () => void }) {
-  const router = useRouter();
-  const { ready, authenticated, user, login, logout } = usePrivy();
-  const [pending, setPending] = useState(false);
-
+  const { user, logout } = usePrivy();
   // Clicking Login should drop the user straight into the trade dashboard
-  // instead of leaving them on the landing page. Privy's login() opens its
-  // modal asynchronously, so we flag the intent and redirect from an effect
-  // once `authenticated` flips true — the same pattern used by Hero / CTA.
-  useEffect(() => {
-    if (pending && authenticated) {
-      setPending(false);
-      router.push(`/trade/${DEFAULT_TRADE_TOKEN}`);
-    }
-  }, [pending, authenticated, router]);
+  // instead of leaving them on the landing page. The shared hook handles both
+  // the in-page/popup login flow and the full-page OAuth redirect (which used
+  // to wipe the redirect intent and strand the user on the landing page).
+  const { ready, authenticated, pending, start } = useLoginAndTrade(onAction);
 
-  const handleLogin = useCallback(() => {
+  const handleLogin = () => {
     if (!PRIVY_CONFIGURED) {
       console.error(
         "[ChadWallet] Login is unavailable because NEXT_PUBLIC_PRIVY_APP_ID was not " +
@@ -51,18 +39,8 @@ function LoginControl({ onAction }: { onAction?: () => void }) {
       );
       return;
     }
-    if (!ready) return;
-    // Already signed in → go straight to trading. Otherwise open the Privy
-    // modal and let the effect above redirect once auth completes.
-    if (authenticated) {
-      router.push(`/trade/${DEFAULT_TRADE_TOKEN}`);
-      onAction?.();
-      return;
-    }
-    setPending(true);
-    login();
-    onAction?.();
-  }, [ready, authenticated, login, router, onAction]);
+    start();
+  };
 
   if (ready && authenticated) {
     const label =
