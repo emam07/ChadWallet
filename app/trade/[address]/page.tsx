@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, use, type ReactNode } from "react";
+import { useState, useEffect, useRef, use, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { usePrivy } from "@privy-io/react-auth";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import Image from "next/image";
 import {
@@ -21,7 +22,9 @@ import {
   Trophy,
   Rss,
   Plus,
+  LogOut,
 } from "lucide-react";
+import { DEFAULT_TRADE_TOKEN } from "@/hooks/useLoginAndTrade";
 import { cn } from "@/lib/utils";
 import { TrendingList } from "@/components/trade/TrendingList";
 import { TradesFeed } from "@/components/trade/TradesFeed";
@@ -224,8 +227,31 @@ export default function TradePage({
   const [swapOpen, setSwapOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<string>("tokens");
-  const { ready, authenticated, login } = usePrivy();
+  const { ready, authenticated, login, logout, user } = usePrivy();
+  const router = useRouter();
   const userLoggedIn = ready && authenticated;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close the account dropdown when clicking anywhere outside it.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [menuOpen]);
+
+  // Logout completes the loop: sign out via Privy, then land back on the
+  // landing page. Re-logging in from there drops the user back at /trade.
+  const handleLogout = async () => {
+    setMenuOpen(false);
+    await logout();
+    router.push("/");
+  };
 
   // Don't fetch token data for logged-out visitors — the dashboard is gated
   // behind sign-in, so there is nothing to render until they authenticate.
@@ -267,12 +293,19 @@ export default function TradePage({
       <header className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-[#0a0b0e]/90 backdrop-blur-sm shrink-0 z-20">
         {/* Left: wordmark + section tabs */}
         <div className="flex items-center gap-5 shrink-0">
-          <a href="/" className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => {
+              setActiveTab("tokens");
+              router.push(`/trade/${DEFAULT_TRADE_TOKEN}`);
+            }}
+            className="flex items-center gap-2 shrink-0"
+            title="Trading dashboard"
+          >
             <Image src={logoSrc} alt="Chad Wallet" height={26} style={{ width: "auto", height: "26px" }} />
             <span className="hidden sm:inline text-sm font-bold tracking-tight text-white">
               Chad <span className="text-[#16c784]">Wallet</span>
             </span>
-          </a>
+          </button>
           <nav className="hidden lg:flex items-center gap-0.5">
             {NAV_TABS.map((t) => {
               const Icon = t.icon;
@@ -339,11 +372,45 @@ export default function TradePage({
             <Plus className="w-3.5 h-3.5" />
             Deposit
           </button>
-          <button
-            className="w-8 h-8 rounded-full shrink-0 ring-1 ring-white/10"
-            style={{ background: "linear-gradient(135deg,#f6465d,#16c784)" }}
-            title="Account"
-          />
+          {/* Account menu — logout lands back on the landing page. */}
+          <div className="relative shrink-0" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="w-8 h-8 rounded-full shrink-0 ring-1 ring-white/10 hover:ring-white/30 transition-all"
+              style={{ background: "linear-gradient(135deg,#f6465d,#16c784)" }}
+              title="Account"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            />
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-white/[0.08] bg-[#14161c] shadow-2xl py-1.5 z-50">
+                {(() => {
+                  const label =
+                    user?.wallet?.address
+                      ? truncate(user.wallet.address)
+                      : user?.email?.address ??
+                        user?.google?.email ??
+                        user?.apple?.email ??
+                        "Account";
+                  return (
+                    <div className="px-3 py-2 border-b border-white/[0.06]">
+                      <div className="text-[10px] uppercase tracking-wide text-white/35">
+                        Signed in as
+                      </div>
+                      <div className="text-xs font-mono text-white/80 truncate">{label}</div>
+                    </div>
+                  );
+                })()}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-[#f6465d] hover:bg-white/[0.04] transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
