@@ -38,6 +38,26 @@ describe('GET /api/token/[address]', () => {
       const data = await res.json();
       expect(data.token.address).toBe(VALID_ADDRESS);
     });
+
+    it('serves curated data (not UNKNOWN/$0) for a known mint when BirdEye is down', async () => {
+      // fetch is stubbed → getTokenOverview returns null → curated fallback.
+      const res = await GET(new Request(`http://localhost/api/token/${VALID_ADDRESS}`), params(VALID_ADDRESS));
+      const data = await res.json();
+      // SOL is in the curated universe: real symbol + non-zero price, never the
+      // misleading all-zero "UNKNOWN" card the user reported.
+      expect(data.token.symbol).toBe('SOL');
+      expect(data.token.name).toBe('Solana');
+      expect(data.token.price).toBeGreaterThan(0);
+      expect(data.token.mc).toBeGreaterThan(0);
+    });
+
+    it('serves UNKNOWN only for a mint absent from the curated universe', async () => {
+      // USDC is a valid Solana address but not in lib/data → genuine unknown.
+      const res = await GET(new Request(`http://localhost/api/token/${USDC_ADDRESS}`), params(USDC_ADDRESS));
+      const data = await res.json();
+      expect(data.token.symbol).toBe('UNKNOWN');
+      expect(data.token.price).toBe(0);
+    });
   });
 
   describe('SQL Injection — must return 400', () => {
