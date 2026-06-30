@@ -28,10 +28,10 @@ interface AuthButtonProps {
 export function AuthButton({ fullWidth, onAction }: AuthButtonProps) {
   const { ready, authenticated, user, login, logout } = usePrivy();
 
-  // The logged-out "Log In / Sign Up" button is the default for BOTH the
+  // The logged-out "Log In" button is the default for BOTH the
   // server render and the first client paint, so hydration matches. We only
   // swap to the account view once Privy is ready *and* authenticated. This
-  // guarantees the Sign Up button is always visible even if the Privy SDK is
+  // guarantees the Log In button is always visible even if the Privy SDK is
   // slow or fails to initialize — never a blank placeholder.
   if (ready && authenticated) {
     const label =
@@ -46,7 +46,7 @@ export function AuthButton({ fullWidth, onAction }: AuthButtonProps) {
       <div className={cn("flex items-center gap-2", fullWidth && "w-full")}>
         <span
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 text-sm font-medium glass border border-white/10 rounded-lg text-white/80",
+            "flex items-center gap-1.5 px-3 py-2 text-sm font-medium glass border border-ink/10 rounded-lg text-ink/80",
             fullWidth && "flex-1 justify-center"
           )}
         >
@@ -59,7 +59,7 @@ export function AuthButton({ fullWidth, onAction }: AuthButtonProps) {
             onAction?.();
           }}
           aria-label="Log out"
-          className="flex items-center justify-center px-3 py-2 rounded-lg glass border border-white/10 text-white/60 hover:text-white hover:border-white/25 transition-all"
+          className="flex items-center justify-center px-3 py-2 rounded-lg glass border border-ink/10 text-ink/60 hover:text-ink hover:border-ink/25 transition-all"
         >
           <LogOut className="w-4 h-4" />
         </button>
@@ -73,7 +73,7 @@ export function AuthButton({ fullWidth, onAction }: AuthButtonProps) {
       whileTap={{ scale: 0.97 }}
       // Before Privy finishes initializing, `login()` is a no-op, so disable
       // the click but keep the button fully visible (just a subtle pulse on
-      // the icon) so users always see the Sign Up affordance.
+      // the icon) so users always see the Log In affordance.
       onClick={() => {
         if (!PRIVY_CONFIGURED) {
           console.error(
@@ -95,12 +95,12 @@ export function AuthButton({ fullWidth, onAction }: AuthButtonProps) {
           : "Login unavailable: NEXT_PUBLIC_PRIVY_APP_ID is not configured on this deployment."
       }
       className={cn(
-        "flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold bg-accent-green text-black rounded-lg hover:bg-accent-green/90 hover:shadow-glow-green transition-all duration-200",
+        "flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold rounded-full bg-[#16181d] text-white border border-white/10 hover:bg-[#23262d] hover:shadow-glow-indigo transition-all duration-200",
         fullWidth ? "w-full py-3" : ""
       )}
     >
       <Wallet className={cn("w-4 h-4", PRIVY_CONFIGURED && !ready && "animate-pulse")} />
-      Log In / Sign Up
+      Log In
     </motion.button>
   );
 }

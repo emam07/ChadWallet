@@ -34,7 +34,7 @@ const flowTabs: {
     label: "Spot Trends",
     tag: "DISCOVER",
     img: memeFlow,
-    color: "#00FFA3",
+    color: "#22c55e",
     icon: TrendingUp,
     desc: "Our AI scans Solana in real time to surface tokens gaining momentum before they go viral.",
   },
@@ -42,7 +42,7 @@ const flowTabs: {
     label: "Follow Whales",
     tag: "INTELLIGENCE",
     img: kolFlow,
-    color: "#6B5CFF",
+    color: "#8b5cf6",
     icon: Eye,
     desc: "Track whale wallets, copy top trader positions, and get alerted the moment a legend makes a move.",
   },
@@ -50,7 +50,7 @@ const flowTabs: {
     label: "Buy & Sell",
     tag: "EXECUTION",
     img: buySellFlow,
-    color: "#00FFA3",
+    color: "#22c55e",
     icon: Zap,
     desc: "Sub-second swap execution with Jito MEV protection. Never get front-run. Always get the best price.",
   },
@@ -58,7 +58,7 @@ const flowTabs: {
     label: "Portfolio",
     tag: "PORTFOLIO",
     img: portfolioFlow,
-    color: "#6B5CFF",
+    color: "#8b5cf6",
     icon: Bell,
     desc: "Track your holdings with real-time P&L, charts, and full token analytics at a glance.",
   },
@@ -66,7 +66,7 @@ const flowTabs: {
     label: "Launch Token",
     tag: "LAUNCH",
     img: launchFlow,
-    color: "#00FFA3",
+    color: "#22c55e",
     icon: Rocket,
     desc: "Deploy your token directly from your phone in seconds — no desktop, no CLI needed.",
   },
@@ -74,7 +74,7 @@ const flowTabs: {
     label: "Relaunch",
     tag: "RELAUNCH",
     img: relaunchFlow,
-    color: "#6B5CFF",
+    color: "#8b5cf6",
     icon: Shield,
     desc: "Give failed tokens a second chance with our streamlined one-tap relaunch flow.",
   },
@@ -87,7 +87,7 @@ const features = [
     title: "Spot Trends First",
     description:
       "Our AI scans the entire Solana ecosystem in real time to surface tokens gaining momentum before they go viral.",
-    color: "#00FFA3",
+    color: "#22c55e",
     gradient: "from-accent-green/10 to-transparent",
   },
   {
@@ -96,7 +96,7 @@ const features = [
     title: "Follow Smart Money",
     description:
       "Track whale wallets, copy top trader positions, and get alerted the moment a legend makes a move.",
-    color: "#6B5CFF",
+    color: "#8b5cf6",
     gradient: "from-accent-purple/10 to-transparent",
   },
   {
@@ -105,7 +105,7 @@ const features = [
     title: "Trade Instantly",
     description:
       "Sub-second swap execution with Jito MEV protection. Never get front-run. Always get the best price.",
-    color: "#00FFA3",
+    color: "#22c55e",
     gradient: "from-accent-green/10 to-transparent",
   },
   {
@@ -114,7 +114,7 @@ const features = [
     title: "Real-Time Alerts",
     description:
       "Price alerts, whale movements, new listings, and breakout notifications delivered in milliseconds.",
-    color: "#6B5CFF",
+    color: "#8b5cf6",
     gradient: "from-accent-purple/10 to-transparent",
   },
   {
@@ -123,7 +123,7 @@ const features = [
     title: "Secure Wallet",
     description:
       "Non-custodial by design. Your keys never leave your device. Military-grade encryption with biometric unlock.",
-    color: "#00FFA3",
+    color: "#22c55e",
     gradient: "from-accent-green/10 to-transparent",
   },
   {
@@ -132,7 +132,7 @@ const features = [
     title: "Lightning Fast Swaps",
     description:
       "Aggregated liquidity from Raydium, Orca, and Jupiter gives you the deepest pools and lowest slippage.",
-    color: "#6B5CFF",
+    color: "#8b5cf6",
     gradient: "from-accent-purple/10 to-transparent",
   },
 ];
@@ -240,7 +240,7 @@ function FlowShowcase() {
     >
       {/* Section label */}
       <div className="text-center mb-10">
-        <p className="text-xs font-mono text-white/30 uppercase tracking-widest">
+        <p className="text-xs font-mono text-ink/30 uppercase tracking-widest">
           See it in action
         </p>
       </div>
@@ -280,7 +280,7 @@ function FlowShowcase() {
 
               {/* Progress bar — driven by progress state (~60fps) */}
               {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5 pointer-events-none">
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-ink/5 pointer-events-none">
                   <div
                     className="h-full"
                     style={{ background: t.color, width: `${progress * 100}%` }}
@@ -330,12 +330,12 @@ function FlowShowcase() {
         {/* Prev arrow */}
         <button
           onClick={prev}
-          className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full glass border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/30 transition-all duration-200 opacity-0 group-hover/viewer:opacity-100"
+          className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full glass border border-ink/10 flex items-center justify-center text-ink/40 hover:text-ink hover:border-ink/30 transition-all duration-200 opacity-0 group-hover/viewer:opacity-100"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        <div className="relative rounded-2xl overflow-hidden border border-white/[0.06] glass">
+        <div className="relative rounded-2xl overflow-hidden border border-ink/[0.06] glass">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={active}
@@ -376,10 +376,10 @@ function FlowShowcase() {
               >
                 {tab.tag}
               </span>
-              <h3 className="text-lg font-bold text-white mt-0.5 mb-1">
+              <h3 className="text-lg font-bold text-ink mt-0.5 mb-1">
                 {tab.label}
               </h3>
-              <p className="text-sm text-white/50 max-w-md">{tab.desc}</p>
+              <p className="text-sm text-ink/50 max-w-md">{tab.desc}</p>
             </motion.div>
           </AnimatePresence>
 
@@ -395,7 +395,7 @@ function FlowShowcase() {
         {/* Next arrow */}
         <button
           onClick={next}
-          className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full glass border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/30 transition-all duration-200 opacity-0 group-hover/viewer:opacity-100"
+          className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full glass border border-ink/10 flex items-center justify-center text-ink/40 hover:text-ink hover:border-ink/30 transition-all duration-200 opacity-0 group-hover/viewer:opacity-100"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -441,7 +441,7 @@ export default function Features() {
             Everything you need to{" "}
             <span className="text-gradient-green">dominate</span>
           </h2>
-          <p className="text-white/40 text-lg max-w-xl mx-auto">
+          <p className="text-ink/40 text-lg max-w-xl mx-auto">
             Professional-grade tools in a wallet that fits in your pocket.
           </p>
         </motion.div>
@@ -459,7 +459,7 @@ export default function Features() {
                 viewport={{ once: true, margin: "-60px" }}
                 variants={cardVariants}
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="group relative snap-start shrink-0 w-[80%] sm:w-auto p-6 rounded-2xl glass border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 cursor-default overflow-hidden"
+                className="group relative snap-start shrink-0 w-[80%] sm:w-auto p-6 rounded-2xl glass border border-ink/[0.06] hover:border-ink/[0.12] transition-all duration-300 cursor-default overflow-hidden"
               >
                 <div
                   className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
@@ -484,10 +484,10 @@ export default function Features() {
                     </span>
                   </div>
 
-                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-white transition-colors">
+                  <h3 className="text-lg font-bold text-ink mb-2 group-hover:text-ink transition-colors">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-white/40 leading-relaxed group-hover:text-white/50 transition-colors">
+                  <p className="text-sm text-ink/40 leading-relaxed group-hover:text-ink/50 transition-colors">
                     {feature.description}
                   </p>
                 </div>

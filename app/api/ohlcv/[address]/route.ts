@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import { isValidSolanaAddress, isValidTimeframe } from "@/lib/validation";
-import {
-  getTopPoolAddress,
-  getPoolOhlcv,
-  RESOLUTION_MAP,
-} from "@/lib/geckoterminal";
+import { getTokenOhlcv } from "@/lib/birdeye";
 
-// OHLCV candles via GeckoTerminal. We resolve the token's most-liquid pool, then
-// fetch that pool's candles for the requested resolution. Falls back to
-// deterministic mock candles when GeckoTerminal has no data.
+// OHLCV candles via BirdEye. The validated timeframes map 1:1 onto BirdEye's
+// `type` values (1m, 15m, 1H, 1D, …), so the param passes straight through.
+// Falls back to deterministic mock candles when BirdEye has no data.
 
 function generateMockOHLCV(basePrice: number, count = 200) {
   const now = Math.floor(Date.now() / 1000);
@@ -53,13 +49,8 @@ export async function GET(
     return NextResponse.json({ error: "Invalid timeframe parameter" }, { status: 400 });
   }
 
-  const resolution = RESOLUTION_MAP[type] ?? RESOLUTION_MAP["15m"];
-
-  const pool = await getTopPoolAddress(address);
-  if (pool) {
-    const candles = await getPoolOhlcv(pool, resolution);
-    if (candles.length) return NextResponse.json({ candles });
-  }
+  const candles = await getTokenOhlcv(address, type);
+  if (candles.length) return NextResponse.json({ candles });
 
   return NextResponse.json({ candles: generateMockOHLCV(addressSeedPrice(address)) });
 }

@@ -1,20 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
-import { tokens as mockTokens } from "@/lib/data";
-import { TrendingUp, TrendingDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-interface TickerToken {
-  symbol: string;
-  name: string;
-  address: string;
-  price: number;
-  change: number;
-  volume: number;
-  color: string;
-}
+import { usePrivy } from "@privy-io/react-auth";
+import { useRouter } from "next/navigation";
+import { tokens as mockTokens, type Token } from "@/lib/data";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -25,77 +15,81 @@ function formatPrice(price: number) {
   return `$${price.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
-function formatVolume(volume: number) {
-  if (volume >= 1_000_000_000) return `$${(volume / 1_000_000_000).toFixed(1)}B`;
-  if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(0)}M`;
-  return `$${(volume / 1_000).toFixed(0)}K`;
-}
+/**
+ * Live ticker strip (section 3). Pulls top Solana tokens from /api/tokens
+ * (BirdEye trending → mock fallback) on mount and re-polls every 15s so the
+ * prices stay close to real time, then scrolls them in a seamless marquee. The
+ * token list is duplicated so the -50% keyframe loops without a visible seam.
+ *
+ * Each token is clickable: signed-out users are sent through the Privy login
+ * first, signed-in users go straight to that token's trade page. Prices are
+ * pulled live from the backend and coloured green/red.
+ */
+export default function TokenTicker() {
+  const router = useRouter();
+  const { ready, authenticated, login } = usePrivy();
 
-function TickerItem({ token }: { token: TickerToken }) {
-  const isPositive = token.change >= 0;
-  return (
-    <a
-      href={`/trade/${token.address}`}
-      className="group flex items-center gap-3 px-4 py-2 rounded-xl hover:glass hover:border-accent-green/10 border border-transparent transition-all duration-200 cursor-pointer shrink-0 mx-2"
-      aria-label={`${token.symbol} price ${formatPrice(token.price)}`}
-    >
-      <div
-        className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
-        style={{ background: `${token.color}20`, color: token.color }}
-      >
-        {token.symbol[0]}
-      </div>
-      <span className="font-mono text-xs font-bold text-white/90 group-hover:text-white transition-colors">
-        {token.symbol}
-      </span>
-      <span className="font-mono text-xs text-white/50">{formatPrice(token.price)}</span>
-      <span
-        className={cn(
-          "font-mono text-xs font-semibold flex items-center gap-0.5",
-          isPositive ? "text-accent-green" : "text-red-400"
-        )}
-      >
-        {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-        {isPositive ? "+" : ""}
-        {token.change.toFixed(2)}%
-      </span>
-      <span className="font-mono text-[10px] text-white/25">
-        {formatVolume(token.volume)}
-      </span>
-    </a>
-  );
-}
-
-interface TokenTickerProps {
-  reverse?: boolean;
-}
-
-export default function TokenTicker({ reverse = false }: TokenTickerProps) {
-  const { data } = useSWR("/api/tokens", fetcher, { refreshInterval: 30000 });
+  const { data } = useSWR<{ tokens?: Token[] }>("/api/tokens", fetcher, {
+    refreshInterval: 15000,
+    keepPreviousData: true,
+  });
   const [mounted, setMounted] = useState(false);
-
   useEffect(() => setMounted(true), []);
 
-  const tokens: TickerToken[] = data?.tokens ?? mockTokens;
-  const doubled = [...tokens, ...tokens];
+  // Remember which token the user clicked while signed out, then route there
+  // once Privy reports them authenticated.
+  const pendingAddress = useRef<string | null>(null);
+
+  const handleTokenClick = useCallback(
+    (address: string) => {
+      if (authenticated) {
+        router.push(`/trade/${address}`);
+        return;
+      }
+      pendingAddress.current = address;
+      if (ready) login();
+    },
+    [authenticated, ready, login, router]
+  );
+
+  useEffect(() => {
+    if (authenticated && pendingAddress.current) {
+      const address = pendingAddress.current;
+      pendingAddress.current = null;
+      router.push(`/trade/${address}`);
+    }
+  }, [authenticated, router]);
 
   if (!mounted) return null;
 
-  return (
-    <div className="relative py-3 overflow-hidden border-y border-white/[0.04] bg-bg-secondary/30 ticker-container">
-      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-bg-primary to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-bg-primary to-transparent z-10 pointer-events-none" />
+  const tokens: Token[] = data?.tokens?.length ? data.tokens : mockTokens;
+  const doubled = [...tokens, ...tokens];
 
-      <div
-        className={cn(
-          "flex items-center whitespace-nowrap",
-          reverse ? "animate-ticker-reverse" : "animate-ticker"
-        )}
-        aria-hidden="true"
-      >
-        {doubled.map((token, i) => (
-          <TickerItem key={`${token.symbol}-${i}`} token={token} />
-        ))}
+  return (
+    <div className="ticker-strip" aria-label="Live token prices">
+      <div className="ticker-inner">
+        {doubled.map((t, i) => {
+          const up = t.change >= 0;
+          const isClone = i >= tokens.length;
+          return (
+            <button
+              type="button"
+              className="ticker-item"
+              key={`${t.symbol}-${i}`}
+              aria-hidden={isClone}
+              tabIndex={isClone ? -1 : 0}
+              onClick={() => handleTokenClick(t.address)}
+              title={`Trade ${t.symbol}`}
+            >
+              <b>{t.symbol}</b>
+              <span className={up ? "ticker-up" : "ticker-down"}>
+                {up ? "+" : ""}
+                {t.change.toFixed(1)}%
+              </span>
+              {formatPrice(t.price)}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

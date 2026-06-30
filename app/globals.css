@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --accent-green: #00FFA3;
-  --accent-purple: #6B5CFF;
+  --accent-green: #16a34a;
+  --accent-teal: #06b6d4;
+  --accent-purple: #8b5cf6;
+  --accent-indigo: #5b5bd6;
+  --bg-base: #f4f5f7;
+  --ink: #0e1116;
 }
 
 * {
@@ -16,86 +20,128 @@ html {
 }
 
 body {
-  background-color: #030305;
-  color: #ffffff;
+  background-color: #f4f5f7;
+  color: #0e1116;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* fomo.family display typography: all headlines in Space Grotesk */
+h1, h2, h3 {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  letter-spacing: -0.02em;
+}
+
 ::selection {
-  background: rgba(0, 255, 163, 0.2);
-  color: #00FFA3;
+  background: rgba(91, 91, 214, 0.18);
+  color: #0e1116;
 }
 
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #030305;
+  background: #eceef1;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 163, 0.2);
-  border-radius: 2px;
+  background: rgba(14, 17, 22, 0.18);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 255, 163, 0.4);
+  background: rgba(14, 17, 22, 0.32);
 }
 
 @layer utilities {
-  .text-gradient-green {
-    background: linear-gradient(135deg, #00FFA3 0%, #00D4FF 100%);
+  /* fomo.family signature gradient: green → teal → purple */
+  .text-gradient-green,
+  .text-gradient-accent {
+    background: linear-gradient(90deg, #16a34a 0%, #06b6d4 50%, #8b5cf6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .text-gradient-purple {
-    background: linear-gradient(135deg, #6B5CFF 0%, #C084FC 100%);
+    background: linear-gradient(135deg, #5b5bd6 0%, #8b5cf6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .text-gradient-hero {
-    background: linear-gradient(135deg, #ffffff 0%, #00FFA3 50%, #6B5CFF 100%);
+    background: linear-gradient(90deg, #16a34a 0%, #06b6d4 50%, #8b5cf6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
+  /* Lowercase, tight, heavy display wordmark — fomo "fomo" treatment */
+  .wordmark {
+    font-family: var(--font-display), "Space Grotesk", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    text-transform: lowercase;
+  }
+
+  /* Light surface "card" — solid white with a hairline border + soft shadow.
+     Used for pills, panels and floating cards across the light theme. */
   .glass {
-    background: rgba(13, 13, 21, 0.6);
+    background: #ffffff;
+    border: 1px solid rgba(14, 17, 22, 0.08);
+    box-shadow: 0 1px 2px rgba(14, 17, 22, 0.04);
+  }
+
+  /* Translucent panels that sit over imagery/gradients keep a little blur. */
+  .glass-blur {
+    background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(14, 17, 22, 0.08);
   }
 
   .glass-green {
-    background: rgba(0, 255, 163, 0.04);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(0, 255, 163, 0.1);
+    background: rgba(91, 91, 214, 0.06);
+    border: 1px solid rgba(91, 91, 214, 0.18);
   }
 
-  .noise-overlay::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
+  /* Solid indigo CTA pill (matches fomo's blue CTA) */
+  .btn-indigo {
+    background: #5b5bd6;
+    color: #ffffff;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .btn-indigo:hover {
+    background: #6a6ae0;
+    box-shadow: 0 12px 30px rgba(91, 91, 214, 0.32);
+  }
+
+  /* Outlined light pill */
+  .btn-outline {
+    background: #ffffff;
+    border: 1px solid rgba(14, 17, 22, 0.14);
+    color: #0e1116;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  }
+  .btn-outline:hover {
+    border-color: rgba(14, 17, 22, 0.28);
+    box-shadow: 0 1px 2px rgba(14, 17, 22, 0.06);
   }
 
   .glow-text-green {
-    text-shadow: 0 0 30px rgba(0, 255, 163, 0.4);
+    text-shadow: none;
   }
 
   .border-glow-green {
-    box-shadow: 0 0 0 1px rgba(0, 255, 163, 0.2), inset 0 0 0 1px rgba(0, 255, 163, 0.05);
+    box-shadow: 0 0 0 1px rgba(91, 91, 214, 0.18);
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   /* Horizontal card strips on mobile: hide the scrollbar but keep scrolling */

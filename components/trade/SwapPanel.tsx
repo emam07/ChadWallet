@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
-import { ArrowDown, Settings, Zap, AlertTriangle, Wallet } from "lucide-react";
+import { Settings, Zap, AlertTriangle, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tokens as mockTokens } from "@/lib/data";
 
 interface SwapPanelProps {
   address: string;
@@ -15,6 +16,8 @@ interface SwapPanelProps {
 
 const SOL_ADDRESS = "So11111111111111111111111111111111111111112";
 const SLIPPAGE_OPTIONS = [0.5, 1, 2, 5];
+// USD quick-amounts replace the old SOL-denominated chips.
+const USD_AMOUNTS = [10, 100, 500, 1000];
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -26,6 +29,28 @@ function formatPrice(price: number) {
   return price.toLocaleString("en-US", { maximumFractionDigits: 4 });
 }
 
+function formatUsd(n: number) {
+  if (!n) return "$0";
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
+  return `$${n.toFixed(0)}`;
+}
+
+// Performance chip: a period label + its price-change percent, colored.
+function PerfChip({ label, value }: { label: string; value: number }) {
+  const positive = value >= 0;
+  return (
+    <div className="flex flex-col items-center gap-0.5 flex-1 rounded-lg bg-ink/[0.04] border border-ink/[0.06] py-1.5">
+      <span className="text-[9px] uppercase tracking-wide text-ink/35">{label}</span>
+      <span className={cn("text-[11px] font-semibold font-mono", positive ? "text-accent-green" : "text-red-400")}>
+        {positive ? "+" : ""}
+        {value.toFixed(2)}%
+      </span>
+    </div>
+  );
+}
+
 export function SwapPanel({
   address,
   symbol,
@@ -34,94 +59,111 @@ export function SwapPanel({
   onLogin,
 }: SwapPanelProps) {
   const [mode, setMode] = useState<"buy" | "sell">("buy");
-  const [inputAmount, setInputAmount] = useState("");
+  // Input is now a USD amount for both buy and sell.
+  const [usdAmount, setUsdAmount] = useState("");
   const [slippage, setSlippage] = useState(1);
   const [showSlippage, setShowSlippage] = useState(false);
-  const [quote, setQuote] = useState<{
-    outAmount: string;
-    priceImpact: number;
-  } | null>(null);
+  const [positionsTab, setPositionsTab] = useState<"open" | "closed">("open");
+  const [aboutOpen, setAboutOpen] = useState(true);
+  const [quote, setQuote] = useState<{ outAmount: string; priceImpact: number } | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [reviewing, setReviewing] = useState(false);
 
-  // SOL's USD price — needed to size a swap, since one leg is always SOL. Both
-  // legs are priced in USD so the estimate is decimal-agnostic (SPL tokens use
-  // varying decimals: BONK 5, USDC 6, SOL 9 — converting Jupiter's raw lamport
-  // amounts client-side without each token's decimals is unreliable).
+  // SOL's USD price — needed to size a swap, since one leg is always SOL.
   const { data: solData } = useSWR(`/api/token/${SOL_ADDRESS}`, fetcher, {
     refreshInterval: 30000,
   });
   const solPrice = (solData?.token?.price as number) ?? 0;
 
-  const fetchQuote = useCallback(async (amount: string) => {
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0 || !price) return;
-    setLoadingQuote(true);
-
-    // USD-based estimate (correct in magnitude for any token's decimals):
-    //   buy:  SOL paid → tokens = (amt · solPrice) / tokenPrice
-    //   sell: tokens sold → SOL = (amt · tokenPrice) / solPrice
-    // If SOL's price hasn't loaded yet, fall back to a 1:price ratio.
-    const estOut =
-      mode === "buy"
-        ? (amt * (solPrice || price)) / price
-        : (amt * price) / (solPrice || price);
-
-    // Pull the live price-impact figure from Jupiter. The input leg is SOL (9
-    // decimals) only in buy mode, so we just enrich the buy estimate; the USD
-    // estimate above stands either way. Never throws — defaults on failure.
-    let priceImpact = 0.1;
-    try {
-      if (mode === "buy") {
-        const lamports = Math.floor(amt * 1e9);
-        const res = await fetch(
-          `https://quote-api.jup.ag/v6/quote?inputMint=${SOL_ADDRESS}&outputMint=${address}&amount=${lamports}&slippageBps=${slippage * 100}`,
-          { signal: AbortSignal.timeout(5000) }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          priceImpact = parseFloat(data.priceImpactPct ?? "0") * 100;
-        }
+  // Full token overview — drives the performance chips + buy/sell pressure bar.
+  const { data: tokenResp } = useSWR(`/api/token/${address}`, fetcher, {
+    refreshInterval: 15000,
+  });
+  const token = tokenResp?.token as
+    | {
+        priceChange?: { m5: number; h1: number; h6: number; h24: number };
+        v24hUSD?: number;
+        txns24h?: { buys: number; sells: number };
       }
-    } catch {
-      // Keep the default price impact — the USD estimate is still shown.
-    }
+    | undefined;
+  const perf = token?.priceChange ?? { m5: 0, h1: 0, h6: 0, h24: 0 };
+  const buys = token?.txns24h?.buys ?? 0;
+  const sells = token?.txns24h?.sells ?? 0;
+  const totalTx = buys + sells;
+  const buyPct = totalTx ? (buys / totalTx) * 100 : 50;
+  const vol24 = token?.v24hUSD ?? 0;
 
-    setQuote({
-      outAmount: estOut.toFixed(mode === "buy" ? 6 : 4),
-      priceImpact,
-    });
-    setLoadingQuote(false);
-  }, [mode, address, price, slippage, solPrice]);
+  // A token we haven't curated is shown as "unverified" — an honest heuristic
+  // (we don't fetch on-chain mint/freeze authority from the market-data tier).
+  const verified = mockTokens.some((t) => t.address === address);
+
+  const fetchQuote = useCallback(
+    async (usd: string) => {
+      const usdVal = parseFloat(usd);
+      if (!usdVal || usdVal <= 0 || !price) {
+        setQuote(null);
+        return;
+      }
+      setLoadingQuote(true);
+
+      // USD-based estimate (decimal-agnostic across SPL token decimals):
+      //   buy:  tokens received = usd / tokenPrice
+      //   sell: SOL received    = usd / solPrice
+      const estOut = mode === "buy" ? usdVal / price : usdVal / (solPrice || price);
+
+      // Enrich the buy estimate with Jupiter's live price impact. Input leg is
+      // SOL: SOL spent = usd / solPrice → lamports. Never throws.
+      let priceImpact = 0.1;
+      try {
+        if (mode === "buy" && solPrice) {
+          const lamports = Math.floor((usdVal / solPrice) * 1e9);
+          const res = await fetch(
+            `https://quote-api.jup.ag/v6/quote?inputMint=${SOL_ADDRESS}&outputMint=${address}&amount=${lamports}&slippageBps=${slippage * 100}`,
+            { signal: AbortSignal.timeout(5000) }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            priceImpact = parseFloat(data.priceImpactPct ?? "0") * 100;
+          }
+        }
+      } catch {
+        // Keep the default price impact — the USD estimate still stands.
+      }
+
+      setQuote({
+        outAmount: estOut.toFixed(mode === "buy" ? 4 : 4),
+        priceImpact,
+      });
+      setLoadingQuote(false);
+    },
+    [mode, address, price, slippage, solPrice]
+  );
 
   useEffect(() => {
-    const t = setTimeout(() => fetchQuote(inputAmount), 400);
+    const t = setTimeout(() => fetchQuote(usdAmount), 400);
     return () => clearTimeout(t);
-  }, [inputAmount, fetchQuote]);
+  }, [usdAmount, fetchQuote]);
 
   // Any change to the order invalidates a pending review.
   useEffect(() => {
     setReviewing(false);
-  }, [inputAmount, mode, slippage]);
+  }, [usdAmount, mode, slippage]);
 
-  const inputToken = mode === "buy" ? "SOL" : symbol;
   const outputToken = mode === "buy" ? symbol : "SOL";
   const outputAmount = quote?.outAmount ?? "";
   const priceImpact = quote?.priceImpact ?? 0;
-  const hasOrder = parseFloat(inputAmount) > 0 && !!quote;
+  const hasOrder = parseFloat(usdAmount) > 0 && !!quote;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Buy / Sell Toggle */}
-      <div className="p-4 border-b border-white/[0.06]">
-        <div className="flex rounded-lg bg-white/[0.04] p-0.5 mb-4">
+      <div className="p-4 border-b border-ink/[0.06]">
+        <div className="flex rounded-lg bg-ink/[0.04] p-0.5 mb-4">
           <button
             onClick={() => setMode("buy")}
             className={cn(
               "flex-1 py-2 text-sm font-semibold rounded-md transition-all",
-              mode === "buy"
-                ? "bg-accent-green text-black"
-                : "text-white/50 hover:text-white"
+              mode === "buy" ? "bg-accent-green text-black" : "text-ink/50 hover:text-ink"
             )}
           >
             Buy
@@ -130,38 +172,78 @@ export function SwapPanel({
             onClick={() => setMode("sell")}
             className={cn(
               "flex-1 py-2 text-sm font-semibold rounded-md transition-all",
-              mode === "sell"
-                ? "bg-red-500 text-white"
-                : "text-white/50 hover:text-white"
+              mode === "sell" ? "bg-red-500 text-ink" : "text-ink/50 hover:text-ink"
             )}
           >
             Sell
           </button>
         </div>
 
-        {/* Slippage */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-white/40">Slippage</span>
+        {/* Single large USD input */}
+        <div className="bg-ink/[0.04] rounded-xl px-3 py-3 border border-ink/[0.06] mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-ink/40">$</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="0"
+              value={usdAmount}
+              onChange={(e) => setUsdAmount(e.target.value)}
+              className="flex-1 min-w-0 bg-transparent text-2xl font-bold text-ink placeholder-ink/20 focus:outline-none"
+            />
+            <span className="text-xs text-ink/30 shrink-0">USD</span>
+          </div>
+          {outputAmount && (
+            <div className="mt-1.5 text-[11px] text-ink/40">
+              {loadingQuote ? (
+                <span className="animate-pulse">Getting quote…</span>
+              ) : (
+                <>≈ {outputAmount} {outputToken}</>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* USD quick-amounts + slippage gear */}
+        <div className="flex gap-1.5 mb-2">
+          {USD_AMOUNTS.map((amt) => (
+            <button
+              key={amt}
+              onClick={() => setUsdAmount(String(amt))}
+              className="flex-1 py-1.5 text-[11px] rounded-md bg-ink/[0.06] text-ink/50 hover:text-ink hover:bg-ink/10 transition-colors"
+            >
+              ${amt}
+            </button>
+          ))}
           <button
             onClick={() => setShowSlippage((v) => !v)}
-            className="flex items-center gap-1 text-xs text-white/60 hover:text-white transition-colors"
+            className={cn(
+              "px-2 rounded-md border transition-all",
+              showSlippage
+                ? "border-accent-indigo/50 text-accent-indigo"
+                : "border-ink/10 text-ink/40 hover:text-ink hover:border-ink/20"
+            )}
+            title="Slippage"
           >
-            <Settings className="w-3 h-3" />
-            {slippage}%
+            <Settings className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {showSlippage && (
-          <div className="flex gap-1.5 mb-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-[10px] text-ink/40 mr-1">Slippage</span>
             {SLIPPAGE_OPTIONS.map((s) => (
               <button
                 key={s}
-                onClick={() => { setSlippage(s); setShowSlippage(false); }}
+                onClick={() => {
+                  setSlippage(s);
+                  setShowSlippage(false);
+                }}
                 className={cn(
-                  "flex-1 py-1.5 text-xs rounded-md border transition-all",
+                  "flex-1 py-1 text-[11px] rounded-md border transition-all",
                   slippage === s
-                    ? "border-accent-green/50 bg-accent-green/10 text-accent-green"
-                    : "border-white/10 text-white/50 hover:border-white/20 hover:text-white"
+                    ? "border-accent-indigo/50 bg-accent-indigo/10 text-accent-indigo"
+                    : "border-ink/10 text-ink/50 hover:border-ink/20 hover:text-ink"
                 )}
               >
                 {s}%
@@ -170,70 +252,12 @@ export function SwapPanel({
           </div>
         )}
 
-        {/* Input */}
-        <div className="bg-white/[0.04] rounded-xl p-3 border border-white/[0.06] mb-2">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-white/40">You pay</span>
+        {/* Available balance line — honest: on-chain reads not wired yet. */}
+        {userLoggedIn && (
+          <div className="text-[11px] text-ink/30 mb-3">
+            Wallet balance unavailable (on-chain reads not enabled)
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              placeholder="0.00"
-              value={inputAmount}
-              onChange={(e) => setInputAmount(e.target.value)}
-              className="flex-1 bg-transparent text-xl font-bold text-white placeholder-white/20 focus:outline-none"
-            />
-            <div className="flex items-center gap-1.5 bg-white/[0.06] rounded-lg px-2 py-1">
-              <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center text-[9px] font-bold text-purple-400">
-                {inputToken[0]}
-              </div>
-              <span className="text-sm font-semibold text-white">{inputToken}</span>
-            </div>
-          </div>
-          {mode === "buy" && (
-            <div className="flex gap-1 mt-2">
-              {[0.1, 0.5, 1, 5].map((amt) => (
-                <button
-                  key={amt}
-                  onClick={() => setInputAmount(String(amt))}
-                  className="flex-1 py-0.5 text-[10px] rounded bg-white/[0.06] text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                  {amt} SOL
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Arrow */}
-        <div className="flex justify-center my-1">
-          <div className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center">
-            <ArrowDown className="w-3.5 h-3.5 text-white/40" />
-          </div>
-        </div>
-
-        {/* Output */}
-        <div className="bg-white/[0.04] rounded-xl p-3 border border-white/[0.06] mb-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-white/40">You receive</span>
-            {loadingQuote && (
-              <span className="text-[10px] text-white/30 animate-pulse">
-                Getting quote...
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 text-xl font-bold text-white/60">
-              {outputAmount || "0.00"}
-            </div>
-            <div className="flex items-center gap-1.5 bg-white/[0.06] rounded-lg px-2 py-1">
-              <div className="w-5 h-5 rounded-full bg-accent-green/20 flex items-center justify-center text-[9px] font-bold text-accent-green">
-                {outputToken[0]}
-              </div>
-              <span className="text-sm font-semibold text-white">{outputToken}</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Price impact warning */}
         {priceImpact > 2 && (
@@ -243,18 +267,11 @@ export function SwapPanel({
           </div>
         )}
 
-        {/* Rate */}
-        {price > 0 && (
-          <div className="text-[11px] text-white/30 text-center mb-3">
-            1 {symbol} ≈ ${formatPrice(price)}
-          </div>
-        )}
-
         {/* CTA */}
         {!userLoggedIn ? (
           <button
             onClick={onLogin}
-            className="w-full py-3 rounded-xl font-semibold text-sm bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/[0.1] hover:text-white transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl font-semibold text-sm bg-ink/[0.06] border border-ink/10 text-ink/70 hover:bg-ink/[0.1] hover:text-ink transition-all flex items-center justify-center gap-2"
           >
             <Wallet className="w-4 h-4" />
             Connect Wallet to Trade
@@ -266,67 +283,147 @@ export function SwapPanel({
             className={cn(
               "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
               !hasOrder
-                ? "bg-white/[0.06] text-white/30 cursor-not-allowed"
+                ? "bg-ink/[0.06] text-ink/30 cursor-not-allowed"
                 : mode === "buy"
                 ? "bg-accent-green text-black hover:bg-accent-green/90 hover:shadow-glow-green"
-                : "bg-red-500 text-white hover:bg-red-500/90"
+                : "bg-red-500 text-ink hover:bg-red-500/90"
             )}
           >
             <Zap className="w-4 h-4" />
             {!hasOrder
               ? "Enter an amount"
               : mode === "buy"
-              ? `Review buy ${symbol}`
-              : `Review sell ${symbol}`}
+              ? `Buy ${symbol}`
+              : `Sell ${symbol}`}
           </button>
         )}
 
-        {/* Order review — built from the real Jupiter quote. Signing/submission
-            via the Privy embedded wallet is the documented next integration
-            step (see SwapPanel notes), so we surface the exact terms rather than
-            silently doing nothing or faking a confirmation. */}
-        {userLoggedIn && reviewing && hasOrder && (
-          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs space-y-1.5">
-            <div className="flex justify-between">
-              <span className="text-white/40">You pay</span>
-              <span className="font-mono text-white">{inputAmount} {inputToken}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/40">You receive (est.)</span>
-              <span className="font-mono text-white">~{outputAmount} {outputToken}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/40">Max slippage</span>
-              <span className="font-mono text-white">{slippage}%</span>
-            </div>
-            <p className="text-[10px] text-white/30 pt-1.5 border-t border-white/[0.06]">
-              Quote locked from Jupiter. On-chain submission requires signing with
-              your embedded wallet — wiring that step is the next milestone.
-            </p>
+        {/* Unverified token badge (conditional) */}
+        {!verified && (
+          <div className="flex items-center gap-1.5 justify-center mt-2 text-[11px] text-orange-400">
+            <AlertTriangle className="w-3 h-3" />
+            Unverified token — trade with caution
           </div>
         )}
 
-        <p className="text-[10px] text-white/20 text-center mt-2">
-          Powered by Jupiter · {slippage}% slippage
-        </p>
+        {/* Order review — built from the real Jupiter quote. */}
+        {userLoggedIn && reviewing && hasOrder && (
+          <div className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.04] p-3 text-xs space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-ink/40">You pay</span>
+              <span className="font-mono text-ink">${usdAmount}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-ink/40">You receive (est.)</span>
+              <span className="font-mono text-ink">~{outputAmount} {outputToken}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-ink/40">Max slippage</span>
+              <span className="font-mono text-ink">{slippage}%</span>
+            </div>
+            <p className="text-[10px] text-ink/30 pt-1.5 border-t border-ink/[0.06]">
+              Quote locked from the on-chain router. On-chain submission requires
+              signing with your embedded wallet — wiring that step is the next
+              milestone.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* User Position — real positions require reading the connected wallet's
-          on-chain SPL balances (and cost basis for P&L). Until that is wired we
-          show an honest empty state instead of fabricated holdings. */}
+      {/* About {Token} — performance chips + buy/sell pressure */}
+      <div className="p-4 border-b border-ink/[0.06]">
+        <button
+          onClick={() => setAboutOpen((v) => !v)}
+          className="flex items-center justify-between w-full mb-3"
+        >
+          <span className="text-xs font-semibold text-ink/60">About {symbol}</span>
+          {aboutOpen ? (
+            <ChevronUp className="w-3.5 h-3.5 text-ink/30" />
+          ) : (
+            <ChevronDown className="w-3.5 h-3.5 text-ink/30" />
+          )}
+        </button>
+
+        {aboutOpen && (
+          <>
+            {/* Performance over 4 windows */}
+            <div className="flex gap-1.5 mb-3">
+              <PerfChip label="5M" value={perf.m5} />
+              <PerfChip label="1H" value={perf.h1} />
+              <PerfChip label="6H" value={perf.h6} />
+              <PerfChip label="1D" value={perf.h24} />
+            </div>
+
+            {/* Buy / sell pressure (24h transaction counts) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-accent-green font-medium">{buys.toLocaleString()} buys</span>
+                <span className="text-red-400 font-medium">{sells.toLocaleString()} sells</span>
+              </div>
+              <div className="flex h-1.5 rounded-full overflow-hidden bg-red-400/30">
+                <div
+                  className="bg-accent-green"
+                  style={{ width: `${buyPct}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-ink/30 pt-0.5">
+                <span>24h volume</span>
+                <span className="font-mono text-ink/50">{formatUsd(vol24)}</span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Your Positions — Open / Closed. Real positions require reading the
+          connected wallet's on-chain SPL balances (and cost basis for P&L);
+          until that's wired we show an honest empty state. */}
       {userLoggedIn && (
         <div className="p-4">
-          <div className="text-xs font-semibold text-white/60 mb-3">
-            Your Position
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-ink/60">Your Positions</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setPositionsTab("open")}
+                className={cn(
+                  "px-2 py-0.5 text-[11px] rounded-md transition-all",
+                  positionsTab === "open"
+                    ? "bg-accent-indigo/15 text-accent-indigo"
+                    : "text-ink/40 hover:text-ink/70"
+                )}
+              >
+                Open
+              </button>
+              <button
+                onClick={() => setPositionsTab("closed")}
+                className={cn(
+                  "px-2 py-0.5 text-[11px] rounded-md transition-all",
+                  positionsTab === "closed"
+                    ? "bg-accent-indigo/15 text-accent-indigo"
+                    : "text-ink/40 hover:text-ink/70"
+                )}
+              >
+                Closed
+              </button>
+            </div>
           </div>
-          <div className="bg-white/[0.04] rounded-xl p-6 border border-white/[0.06] text-center">
-            <Wallet className="w-5 h-5 text-white/20 mx-auto mb-2" />
-            <p className="text-sm text-white/50">No {symbol} position yet</p>
-            <p className="text-[11px] text-white/30 mt-1">
-              Your holdings will appear here once on-chain balance reads are enabled.
+          <div className="bg-ink/[0.04] rounded-xl p-6 border border-ink/[0.06] text-center">
+            <Wallet className="w-5 h-5 text-ink/20 mx-auto mb-2" />
+            <p className="text-sm text-ink/50">
+              No {positionsTab} {symbol} position
+            </p>
+            <p className="text-[11px] text-ink/30 mt-1">
+              Positions appear here once on-chain balance reads are enabled.
             </p>
           </div>
         </div>
+      )}
+
+      {/* Price reference (kept minimal — Jupiter branding intentionally hidden) */}
+      {price > 0 && (
+        <p className="text-[10px] text-ink/20 text-center py-2">
+          1 {symbol} ≈ ${formatPrice(price)}
+        </p>
       )}
     </div>
   );

@@ -1,13 +1,29 @@
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { Space_Grotesk, Inter } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
+
+// fomo.family-style typography: Space Grotesk for display headlines,
+// Inter for body/UI. Exposed as CSS variables consumed by tailwind.config.
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const viewport: Viewport = {
-  themeColor: "#030305",
+  themeColor: "#f4f5f7",
 };
 
 export const metadata: Metadata = {
@@ -44,10 +60,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable}`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="font-sans bg-bg-primary text-white antialiased overflow-x-hidden">
+      <body className="font-sans bg-bg-primary text-ink antialiased overflow-x-hidden">
         <Providers>{children}</Providers>
       </body>
     </html>

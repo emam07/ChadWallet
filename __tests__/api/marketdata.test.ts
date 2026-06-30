@@ -1,9 +1,9 @@
 /**
  * Market-data integration tests — exercise the live path where routes call the
- * public DexScreener / GeckoTerminal APIs and map the response. (The other
- * api/*.test.ts files cover the no-network mock-fallback path.)
+ * BirdEye API and map the response. (The other api/*.test.ts files cover the
+ * no-network mock-fallback path.)
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const VALID_ADDRESS = 'So11111111111111111111111111111111111111112'; // SOL
 const BONK_ADDRESS = 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263';
@@ -20,18 +20,45 @@ function mockJsonOnce(body: unknown) {
   });
 }
 
-function dexPair(over: Record<string, unknown> = {}) {
+/** A BirdEye token-overview response (data envelope). */
+function overview(over: Record<string, unknown> = {}) {
   return {
-    chainId: 'solana',
-    pairAddress: 'PAIR1',
-    baseToken: { address: VALID_ADDRESS, name: 'Wrapped SOL', symbol: 'SOL' },
-    quoteToken: { address: 'USDC', name: 'USD Coin', symbol: 'USDC' },
-    priceUsd: '150.5',
-    priceChange: { h24: 5.2 },
-    volume: { h24: 1_000_000 },
-    liquidity: { usd: 5_000_000 },
-    marketCap: 80_000_000,
-    info: { imageUrl: 'https://dd.dexscreener.com/sol.png' },
+    data: {
+      symbol: 'SOL',
+      name: 'Wrapped SOL',
+      price: 150.5,
+      priceChange24hPercent: 5.2,
+      priceChange30mPercent: 0.1,
+      priceChange1hPercent: 0.5,
+      priceChange6hPercent: 2,
+      v24hUSD: 1_000_000,
+      liquidity: 5_000_000,
+      marketCap: 80_000_000,
+      buy24h: 120,
+      sell24h: 80,
+      holder: 4321,
+      logoURI: 'https://logo.birdeye.so/sol.png',
+      extensions: { website: 'https://solana.com', twitter: 'https://twitter.com/solana' },
+      ...over,
+    },
+  };
+}
+
+/** A BirdEye trending response (data.tokens). */
+function trendingPage(rows: Array<Record<string, unknown>>) {
+  return { data: { tokens: rows } };
+}
+
+function trendingRow(over: Record<string, unknown> = {}) {
+  return {
+    address: VALID_ADDRESS,
+    symbol: 'SOL',
+    name: 'Wrapped SOL',
+    price: 150.5,
+    price24hChangePercent: 5.2,
+    volume24hUSD: 1_000_000,
+    marketcap: 80_000_000,
+    logoURI: 'https://logo.birdeye.so/sol.png',
     ...over,
   };
 }
@@ -40,139 +67,97 @@ vi.stubGlobal('fetch', vi.fn());
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // A non-placeholder key activates the live BirdEye path.
+  vi.stubEnv('BIRDEYE_API_KEY', 'test-key');
 });
 
-describe('lib/dexscreener client', () => {
-  it('returns the highest-liquidity Solana pair for a token', async () => {
-    mockJsonOnce({
-      pairs: [
-        dexPair({ pairAddress: 'low', liquidity: { usd: 100 } }),
-        dexPair({ pairAddress: 'high', liquidity: { usd: 999_999 } }),
-        // non-Solana pair must be ignored
-        dexPair({ chainId: 'ethereum', pairAddress: 'eth', liquidity: { usd: 10_000_000 } }),
-      ],
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe('lib/birdeye client', () => {
+  it('maps a token overview to the UI shape', async () => {
+    mockJsonOnce(overview());
+    const { getTokenOverview } = await import('@/lib/birdeye');
+    const t = await getTokenOverview(VALID_ADDRESS);
+    expect(t).toMatchObject({
+      symbol: 'SOL',
+      price: 150.5,
+      priceChange24hPercent: 5.2,
+      v24hUSD: 1_000_000,
+      liquidity: 5_000_000,
+      mc: 80_000_000,
+      txns24h: { buys: 120, sells: 80 },
+      holder: 4321,
+      website: 'https://solana.com',
     });
-    const { getTokenPair } = await import('@/lib/dexscreener');
-    const pair = await getTokenPair(VALID_ADDRESS);
-    expect(pair?.pairAddress).toBe('high');
+    expect(t?.priceChange).toEqual({ m5: 0.1, h1: 0.5, h6: 2, h24: 5.2 });
+    expect(t?.socials).toContainEqual({ type: 'twitter', url: 'https://twitter.com/solana' });
   });
 
   it('returns null on fetch failure', async () => {
     (fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('network'));
-    const { getTokenPair } = await import('@/lib/dexscreener');
-    expect(await getTokenPair(VALID_ADDRESS)).toBeNull();
+    const { getTokenOverview } = await import('@/lib/birdeye');
+    expect(await getTokenOverview(VALID_ADDRESS)).toBeNull();
   });
 
   it('returns null on non-2xx response', async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: false, json: async () => ({}) });
-    const { getTokenPair } = await import('@/lib/dexscreener');
-    expect(await getTokenPair(VALID_ADDRESS)).toBeNull();
+    const { getTokenOverview } = await import('@/lib/birdeye');
+    expect(await getTokenOverview(VALID_ADDRESS)).toBeNull();
   });
 
-  it('maps batched pairs by lowercased token address', async () => {
-    mockJsonOnce({
-      pairs: [
-        dexPair(),
-        dexPair({
-          baseToken: { address: BONK_ADDRESS, name: 'Bonk', symbol: 'BONK' },
-          volume: { h24: 5_000_000 },
-        }),
-      ],
-    });
-    const { getTokenPairs } = await import('@/lib/dexscreener');
-    const map = await getTokenPairs([VALID_ADDRESS, BONK_ADDRESS]);
-    expect(map.get(VALID_ADDRESS.toLowerCase())?.baseToken.symbol).toBe('SOL');
-    expect(map.get(BONK_ADDRESS.toLowerCase())?.baseToken.symbol).toBe('BONK');
-  });
-});
-
-describe('lib/geckoterminal client', () => {
-  it('resolves the top pool address for a token', async () => {
-    mockJsonOnce({ data: [{ attributes: { address: 'POOL_TOP' } }, { attributes: { address: 'POOL2' } }] });
-    const { getTopPoolAddress } = await import('@/lib/geckoterminal');
-    expect(await getTopPoolAddress(VALID_ADDRESS)).toBe('POOL_TOP');
+  it('returns null (no fetch) when no API key is configured', async () => {
+    vi.stubEnv('BIRDEYE_API_KEY', 'your-birdeye-api-key-here');
+    const { getTokenOverview } = await import('@/lib/birdeye');
+    expect(await getTokenOverview(VALID_ADDRESS)).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('zips and sorts ohlcv_list ascending by time', async () => {
+  it('maps and sorts OHLCV items ascending by time', async () => {
     mockJsonOnce({
       data: {
-        attributes: {
-          // returned newest-first
-          ohlcv_list: [
-            [300, 3, 3.5, 2.5, 3.2, 3000],
-            [200, 2, 2.5, 1.5, 2.2, 2000],
-            [100, 1, 1.5, 0.5, 1.2, 1000],
-          ],
-        },
+        items: [
+          { unixTime: 300, o: 3, h: 3.5, l: 2.5, c: 3.2, v: 3000 },
+          { unixTime: 100, o: 1, h: 1.5, l: 0.5, c: 1.2, v: 1000 },
+          { unixTime: 200, o: 2, h: 2.5, l: 1.5, c: 2.2, v: 2000 },
+        ],
       },
     });
-    const { getPoolOhlcv } = await import('@/lib/geckoterminal');
-    const candles = await getPoolOhlcv('POOL', { timeframe: 'minute', aggregate: 15 });
+    const { getTokenOhlcv } = await import('@/lib/birdeye');
+    const candles = await getTokenOhlcv(VALID_ADDRESS, '15m');
     expect(candles).toHaveLength(3);
     expect(candles[0]).toEqual({ time: 100, open: 1, high: 1.5, low: 0.5, close: 1.2, volume: 1000 });
     expect(candles[2].time).toBe(300);
   });
 
-  it('maps pool trades and drops invalid rows', async () => {
+  it('maps trades and drops invalid rows', async () => {
     mockJsonOnce({
-      data: [
-        {
-          attributes: {
-            kind: 'buy',
-            tx_hash: 'sig1',
-            tx_from_address: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456',
-            to_token_amount: '400',
-            from_token_amount: '1',
-            price_to_in_usd: '1.25',
-            volume_in_usd: '500',
-            block_timestamp: '2026-06-24T00:00:00Z',
+      data: {
+        items: [
+          {
+            txHash: 'sig1', side: 'buy', price: 1.25, tokenAmount: 400,
+            volumeUSD: 500, owner: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456', blockUnixTime: 1_700_000_000,
           },
-        },
-        // invalid: zero price → dropped
-        {
-          attributes: {
-            kind: 'sell', tx_hash: 'sig2', tx_from_address: 'x',
-            from_token_amount: '10', price_from_in_usd: '0',
-            volume_in_usd: '0', block_timestamp: '2026-06-24T00:01:00Z',
-          },
-        },
-      ],
+          // invalid: zero price → dropped
+          { txHash: 'sig2', side: 'sell', price: 0, tokenAmount: 10, volumeUSD: 0, owner: 'x', blockUnixTime: 1_700_000_060 },
+        ],
+      },
     });
-    const { getPoolTrades } = await import('@/lib/geckoterminal');
-    const trades = await getPoolTrades('POOL');
+    const { getTokenTrades } = await import('@/lib/birdeye');
+    const trades = await getTokenTrades(VALID_ADDRESS);
     expect(trades).toHaveLength(1);
-    expect(trades[0]).toMatchObject({ kind: 'buy', txHash: 'sig1', tokenAmount: 400, priceUsd: 1.25, valueUsd: 500 });
+    expect(trades[0]).toMatchObject({ type: 'buy', txHash: 'sig1', amount: 400, price: 1.25, value: 500 });
+    expect(trades[0].timestamp).toBe(1_700_000_000 * 1000);
   });
 });
 
-/** One page of GeckoTerminal's top-pools response (base tokens side-loaded). */
-function geckoPoolsPage(
-  rows: Array<{ id: string; address: string; symbol: string; name: string; volume: string; price?: string; change?: string; mc?: string }>
-) {
-  return {
-    data: rows.map((r) => ({
-      attributes: {
-        base_token_price_usd: r.price ?? '1',
-        price_change_percentage: { h24: r.change ?? '0' },
-        volume_usd: { h24: r.volume },
-        market_cap_usd: r.mc ?? '0',
-      },
-      relationships: { base_token: { data: { id: r.id } } },
-    })),
-    included: rows.map((r) => ({
-      id: r.id,
-      type: 'token',
-      attributes: { address: r.address, name: r.name, symbol: r.symbol, image_url: null },
-    })),
-  };
-}
-
-describe('GET /api/tokens (GeckoTerminal trending path)', () => {
+describe('GET /api/tokens (BirdEye trending path)', () => {
   it('returns live trending tokens ranked by 24h volume', async () => {
     mockJsonOnce(
-      geckoPoolsPage([
-        { id: `solana_${VALID_ADDRESS}`, address: VALID_ADDRESS, symbol: 'SOL', name: 'Wrapped SOL', volume: '1000000', price: '150.5', change: '5.2' },
-        { id: `solana_${BONK_ADDRESS}`, address: BONK_ADDRESS, symbol: 'BONK', name: 'Bonk', volume: '9000000', price: '0.00002', change: '12.34' },
+      trendingPage([
+        trendingRow({ address: VALID_ADDRESS, symbol: 'SOL', volume24hUSD: 1_000_000, price: 150.5, price24hChangePercent: 5.2 }),
+        trendingRow({ address: BONK_ADDRESS, symbol: 'BONK', name: 'Bonk', volume24hUSD: 9_000_000, price: 0.00002, price24hChangePercent: 12.34 }),
       ])
     );
     const { GET } = await import('@/app/api/tokens/route');
@@ -187,10 +172,10 @@ describe('GET /api/tokens (GeckoTerminal trending path)', () => {
   it('only returns addresses that pass Solana validation', async () => {
     const { isValidSolanaAddress } = await import('@/lib/validation');
     mockJsonOnce(
-      geckoPoolsPage([
-        { id: `solana_${VALID_ADDRESS}`, address: VALID_ADDRESS, symbol: 'SOL', name: 'Wrapped SOL', volume: '1000000' },
+      trendingPage([
+        trendingRow({ address: VALID_ADDRESS, symbol: 'SOL', volume24hUSD: 1_000_000 }),
         // garbage address must be filtered out
-        { id: 'solana_bad', address: 'not a valid address!!', symbol: 'BAD', name: 'Bad', volume: '5000000' },
+        trendingRow({ address: 'not a valid address!!', symbol: 'BAD', name: 'Bad', volume24hUSD: 5_000_000 }),
       ])
     );
     const { GET } = await import('@/app/api/tokens/route');
@@ -200,41 +185,18 @@ describe('GET /api/tokens (GeckoTerminal trending path)', () => {
     }
     expect(data.tokens.some((t: { symbol: string }) => t.symbol === 'BAD')).toBe(false);
   });
-});
 
-describe('GET /api/tokens (DexScreener fallback path)', () => {
-  it('falls back to DexScreener when GeckoTerminal has no pools', async () => {
-    mockJsonOnce({ data: [] }); // GeckoTerminal top-pools: empty
-    mockJsonOnce({
-      pairs: [
-        dexPair({ priceUsd: '150.5', priceChange: { h24: 5.2 }, volume: { h24: 1_000_000 } }),
-        dexPair({
-          baseToken: { address: BONK_ADDRESS, name: 'Bonk', symbol: 'BONK' },
-          priceUsd: '0.00002', priceChange: { h24: 12.34 }, volume: { h24: 9_000_000 },
-        }),
-      ],
-    });
-    const { GET } = await import('@/app/api/tokens/route');
-    const data = await (await GET()).json();
-    // ranked by volume DESC → BONK first
-    expect(data.tokens[0].symbol).toBe('BONK');
-    expect(data.tokens[0].change).toBeCloseTo(12.34);
-    expect(data.tokens[1].symbol).toBe('SOL');
-    expect(data.tokens[1].price).toBe(150.5);
-  });
-
-  it('falls back to mock tokens when both upstreams return nothing', async () => {
-    mockJsonOnce({ data: [] }); // GeckoTerminal: empty
-    mockJsonOnce({ pairs: [] }); // DexScreener: empty
+  it('falls back to mock tokens when BirdEye returns nothing', async () => {
+    mockJsonOnce(trendingPage([])); // empty trending page
     const { GET } = await import('@/app/api/tokens/route');
     const data = await (await GET()).json();
     expect(data.tokens.length).toBeGreaterThan(0);
   });
 });
 
-describe('GET /api/token/[address] (DexScreener path)', () => {
+describe('GET /api/token/[address] (BirdEye path)', () => {
   it('maps a single token overview to the UI shape', async () => {
-    mockJsonOnce({ pairs: [dexPair({ priceUsd: '2.5', priceChange: { h24: -5 }, volume: { h24: 900_000 }, marketCap: 4_000_000 })] });
+    mockJsonOnce(overview({ price: 2.5, priceChange24hPercent: -5, v24hUSD: 900_000, marketCap: 4_000_000 }));
     const { GET } = await import('@/app/api/token/[address]/route');
     const data = await (await GET(new Request(`http://localhost/api/token/${VALID_ADDRESS}`), params(VALID_ADDRESS))).json();
     expect(data.token.symbol).toBe('SOL');
@@ -242,21 +204,26 @@ describe('GET /api/token/[address] (DexScreener path)', () => {
     expect(data.token.priceChange24hPercent).toBeCloseTo(-5);
     expect(data.token.mc).toBe(4_000_000);
   });
+
+  it('serves an unknown-token shape when BirdEye has no data', async () => {
+    mockJsonOnce({ data: null });
+    const { GET } = await import('@/app/api/token/[address]/route');
+    const data = await (await GET(new Request(`http://localhost/api/token/${VALID_ADDRESS}`), params(VALID_ADDRESS))).json();
+    expect(data.token.symbol).toBe('UNKNOWN');
+  });
 });
 
-describe('GET /api/trades/[address] (GeckoTerminal path)', () => {
-  it('resolves the pool then maps trades', async () => {
-    mockJsonOnce({ data: [{ attributes: { address: 'POOL' } }] }); // getTopPoolAddress
+describe('GET /api/trades/[address] (BirdEye path)', () => {
+  it('maps trades and shortens the wallet', async () => {
     mockJsonOnce({
-      data: [
-        {
-          attributes: {
-            kind: 'buy', tx_hash: 'sig1', tx_from_address: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456',
-            to_token_amount: '400', price_to_in_usd: '1.25', volume_in_usd: '500',
-            block_timestamp: '2026-06-24T00:00:00Z',
+      data: {
+        items: [
+          {
+            txHash: 'sig1', side: 'buy', price: 1.25, tokenAmount: 400,
+            volumeUSD: 500, owner: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456', blockUnixTime: 1_700_000_000,
           },
-        },
-      ],
+        ],
+      },
     });
     const { GET } = await import('@/app/api/trades/[address]/route');
     const data = await (await GET(new Request(`http://localhost/api/trades/${VALID_ADDRESS}`), params(VALID_ADDRESS))).json();
@@ -268,11 +235,15 @@ describe('GET /api/trades/[address] (GeckoTerminal path)', () => {
   });
 });
 
-describe('GET /api/ohlcv/[address] (GeckoTerminal path)', () => {
-  it('resolves the pool then returns candles', async () => {
-    mockJsonOnce({ data: [{ attributes: { address: 'POOL' } }] }); // getTopPoolAddress
+describe('GET /api/ohlcv/[address] (BirdEye path)', () => {
+  it('returns mapped candles', async () => {
     mockJsonOnce({
-      data: { attributes: { ohlcv_list: [[200, 2, 2.5, 1.5, 2.2, 2000], [100, 1, 1.5, 0.5, 1.2, 1000]] } },
+      data: {
+        items: [
+          { unixTime: 200, o: 2, h: 2.5, l: 1.5, c: 2.2, v: 2000 },
+          { unixTime: 100, o: 1, h: 1.5, l: 0.5, c: 1.2, v: 1000 },
+        ],
+      },
     });
     const { GET } = await import('@/app/api/ohlcv/[address]/route');
     const data = await (await GET(new Request(`http://localhost/api/ohlcv/${VALID_ADDRESS}?type=15m`), params(VALID_ADDRESS))).json();
@@ -280,8 +251,8 @@ describe('GET /api/ohlcv/[address] (GeckoTerminal path)', () => {
     expect(data.candles[0]).toEqual({ time: 100, open: 1, high: 1.5, low: 0.5, close: 1.2, volume: 1000 });
   });
 
-  it('falls back to mock candles when the token has no pool', async () => {
-    mockJsonOnce({ data: [] }); // no pool
+  it('falls back to mock candles when BirdEye has no data', async () => {
+    mockJsonOnce({ data: { items: [] } });
     const { GET } = await import('@/app/api/ohlcv/[address]/route');
     const data = await (await GET(new Request(`http://localhost/api/ohlcv/${VALID_ADDRESS}?type=15m`), params(VALID_ADDRESS))).json();
     expect(data.candles.length).toBeGreaterThan(0);

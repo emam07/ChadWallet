@@ -9,11 +9,11 @@ export interface Token {
   color: string;
 }
 
-// Curated universe of real Solana mints. Addresses are verified against
-// DexScreener/GeckoTerminal; the price/change/volume/marketCap fields are a
-// point-in-time snapshot used ONLY as a last-resort fallback when every live
-// market API is unreachable. In normal operation these rows are re-priced live
-// (see app/api/tokens/route.ts), so the static numbers below are never shown.
+// Curated universe of real Solana mints. The price/change/volume/marketCap
+// fields are a point-in-time snapshot used ONLY as a last-resort fallback when
+// the live market API (BirdEye) is unreachable. In normal operation the trending
+// list is served live (see app/api/tokens/route.ts), so for that list these
+// static numbers are never shown.
 export const tokens: Token[] = [
   { symbol: "SOL", name: "Solana", address: "So11111111111111111111111111111111111111112", price: 187.42, change: 8.34, volume: 2_840_000_000, marketCap: 88_100_000_000, color: "#9945FF" },
   { symbol: "BONK", name: "Bonk", address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", price: 0.0000342, change: 24.71, volume: 412_000_000, marketCap: 2_280_000_000, color: "#F7931A" },

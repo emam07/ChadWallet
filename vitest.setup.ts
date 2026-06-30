@@ -1,4 +1,5 @@
-// Ensure no real API keys / config leak into tests.
-// Market data now comes from key-less public APIs (DexScreener / GeckoTerminal),
-// so only Privy's app id needs stripping.
+// Ensure no real API keys / config leak into tests. Tests that exercise the
+// live BirdEye path stub BIRDEYE_API_KEY explicitly; stripping it here keeps the
+// other routes on their deterministic mock-fallback path.
 delete process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+delete process.env.BIRDEYE_API_KEY;

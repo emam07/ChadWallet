@@ -30,8 +30,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         // listing it here would render a sign-in button that always fails.
         loginMethods: ["email", "google"],
         appearance: {
+          // Match the dark landing page: a dark modal with the gold brand accent
+          // and the real (white, transparent) ChadWallet logo. The previous
+          // config pointed at "/logo/light.png", which does not exist, so the
+          // modal rendered a broken image — use the shipped "/logo/dark.png".
           theme: "dark",
-          accentColor: "#00FFA3",
+          accentColor: "#f5c518",
           logo: "/logo/dark.png",
           walletChainType: "solana-only",
         },

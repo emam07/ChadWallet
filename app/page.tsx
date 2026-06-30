@@ -1,26 +1,25 @@
+import "./landing.css";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import TokenTicker from "@/components/TokenTicker";
-import Features from "@/components/Features";
-import MarketPreview from "@/components/MarketPreview";
+import Bento from "@/components/Bento";
+import Showcase from "@/components/Showcase";
 import Stats from "@/components/Stats";
-import HowItWorks from "@/components/HowItWorks";
-import MobileApp from "@/components/MobileApp";
 import CTA from "@/components/CTA";
 import Footer from "@/components/Footer";
 
+// Dark "space" landing page — full rip-and-replace per prompts/landinguichange.md.
+// All styling is scoped under `.landing-root` (see app/landing.css) so the
+// light-themed trading dashboard at /trade is left completely untouched.
 export default function Home() {
   return (
-    <main className="relative min-h-screen bg-bg-primary">
+    <main className="landing-root">
       <Navbar />
       <Hero />
       <TokenTicker />
-      <Features />
-      <MarketPreview />
+      <Bento />
+      <Showcase />
       <Stats />
-      <HowItWorks />
-      <MobileApp />
-      <TokenTicker reverse />
       <CTA />
       <Footer />
     </main>

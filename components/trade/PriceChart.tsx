@@ -6,6 +6,8 @@ import useSWR from "swr";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const TIMEFRAMES = [
+  { label: "1m", value: "1m" },
+  { label: "5m", value: "5m" },
   { label: "15m", value: "15m" },
   { label: "1H", value: "1H" },
   { label: "4H", value: "4H" },
@@ -28,12 +30,23 @@ export function PriceChart({ address }: { address: string }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const seriesRef = useRef<any>(null);
   const [timeframe, setTimeframe] = useState("15m");
+  // Price vs Market-Cap view. MCap mode scales every candle by circulating
+  // supply (≈ marketCap / price), so the axis reads in dollars of market cap.
+  const [denom, setDenom] = useState<"price" | "mcap">("price");
 
   const { data } = useSWR(
     `/api/ohlcv/${address}?type=${timeframe}`,
     fetcher,
     { refreshInterval: 60000 }
   );
+
+  // Token overview → supply multiplier for the MCap view.
+  const { data: tokenResp } = useSWR(`/api/token/${address}`, fetcher, {
+    refreshInterval: 30000,
+  });
+  const tk = tokenResp?.token as { price?: number; mc?: number } | undefined;
+  const supply = tk?.price && tk?.mc ? tk.mc / tk.price : 0;
+  const mult = denom === "mcap" && supply > 0 ? supply : 1;
 
   // Init chart once
   useEffect(() => {
@@ -50,21 +63,21 @@ export function PriceChart({ address }: { address: string }) {
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { type: ColorType.Solid, color: "transparent" },
-          textColor: "rgba(255,255,255,0.4)",
+          textColor: "rgba(14,17,22,0.55)",
         },
         grid: {
-          vertLines: { color: "rgba(255,255,255,0.04)" },
-          horzLines: { color: "rgba(255,255,255,0.04)" },
+          vertLines: { color: "rgba(14,17,22,0.06)" },
+          horzLines: { color: "rgba(14,17,22,0.06)" },
         },
         crosshair: {
-          vertLine: { color: "rgba(0,255,163,0.3)", width: 1 },
-          horzLine: { color: "rgba(0,255,163,0.3)", width: 1 },
+          vertLine: { color: "rgba(91,91,214,0.35)", width: 1 },
+          horzLine: { color: "rgba(91,91,214,0.35)", width: 1 },
         },
         rightPriceScale: {
-          borderColor: "rgba(255,255,255,0.06)",
+          borderColor: "rgba(14,17,22,0.10)",
         },
         timeScale: {
-          borderColor: "rgba(255,255,255,0.06)",
+          borderColor: "rgba(14,17,22,0.10)",
           timeVisible: true,
           secondsVisible: false,
         },
@@ -73,16 +86,16 @@ export function PriceChart({ address }: { address: string }) {
       });
 
       const candleSeries = chart.addSeries(CandlestickSeries, {
-        upColor: "#00FFA3",
-        downColor: "#FF4D4D",
-        borderUpColor: "#00FFA3",
-        borderDownColor: "#FF4D4D",
-        wickUpColor: "#00FFA3",
-        wickDownColor: "#FF4D4D",
+        upColor: "#16a34a",
+        downColor: "#ef4444",
+        borderUpColor: "#16a34a",
+        borderDownColor: "#ef4444",
+        wickUpColor: "#16a34a",
+        wickDownColor: "#ef4444",
       });
 
       const volumeSeries = chart.addSeries(HistogramSeries, {
-        color: "#26a69a",
+        color: "rgba(91,91,214,0.45)",
         priceFormat: { type: "volume" },
         priceScaleId: "volume",
       });
@@ -143,10 +156,10 @@ export function PriceChart({ address }: { address: string }) {
     seriesRef.current.candle.setData(
       sorted.map((c) => ({
         time: c.time as unknown,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
+        open: c.open * mult,
+        high: c.high * mult,
+        low: c.low * mult,
+        close: c.close * mult,
       }))
     );
 
@@ -155,35 +168,54 @@ export function PriceChart({ address }: { address: string }) {
         time: c.time as unknown,
         value: c.volume,
         color: c.close >= c.open
-          ? "rgba(0,255,163,0.3)"
-          : "rgba(255,77,77,0.3)",
+          ? "rgba(22,163,74,0.4)"
+          : "rgba(239,68,68,0.4)",
       }))
     );
 
     if (chartRef.current) {
       chartRef.current.timeScale().fitContent();
     }
-  }, [data]);
+  }, [data, mult]);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Timeframe selector */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-white/[0.06]">
+      {/* Timeframe selector + Price/MCap toggle */}
+      <div className="flex items-center gap-1 px-4 py-2 border-b border-ink/[0.06]">
         {TIMEFRAMES.map((tf) => (
           <button
             key={tf.value}
             onClick={() => setTimeframe(tf.value)}
-            className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${
+            className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all ${
               timeframe === tf.value
-                ? "bg-accent-green/20 text-accent-green border border-accent-green/30"
-                : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                ? "bg-accent-indigo/20 text-accent-indigo border border-accent-indigo/30"
+                : "text-ink/40 hover:text-ink/70 hover:bg-ink/[0.04]"
             }`}
           >
             {tf.label}
           </button>
         ))}
-        <div className="ml-auto text-[10px] text-white/25 font-mono">
-          Powered by TradingView
+
+        {/* Price / Market-Cap denomination toggle */}
+        <div className="ml-auto flex items-center rounded-md bg-ink/[0.04] p-0.5">
+          <button
+            onClick={() => setDenom("price")}
+            className={`px-2 py-0.5 text-[11px] rounded transition-all ${
+              denom === "price" ? "bg-accent-indigo/20 text-accent-indigo" : "text-ink/40 hover:text-ink/70"
+            }`}
+          >
+            Price
+          </button>
+          <button
+            onClick={() => supply > 0 && setDenom("mcap")}
+            disabled={supply <= 0}
+            title={supply > 0 ? "Show market cap" : "Market cap unavailable"}
+            className={`px-2 py-0.5 text-[11px] rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+              denom === "mcap" ? "bg-accent-indigo/20 text-accent-indigo" : "text-ink/40 hover:text-ink/70"
+            }`}
+          >
+            MCap
+          </button>
         </div>
       </div>
 

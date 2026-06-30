@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { isValidSolanaAddress } from "@/lib/validation";
-import { getTopPoolAddress, getPoolTrades } from "@/lib/geckoterminal";
+import { getTokenTrades } from "@/lib/birdeye";
 
-// Live swaps for a token via GeckoTerminal. We resolve the token's most-liquid
-// pool, then fetch that pool's recent trades. Falls back to seeded mock trades
-// when GeckoTerminal has no data.
+// Live swaps for a token via BirdEye. Falls back to seeded mock trades when
+// BirdEye has no data (or no API key is configured).
 
 function shortWallet(maker: string | null): string {
   if (!maker || maker.length < 8) return maker || "unknown";
@@ -53,21 +52,18 @@ export async function GET(
     return NextResponse.json({ error: "Invalid token address" }, { status: 400 });
   }
 
-  const pool = await getTopPoolAddress(address);
-  if (pool) {
-    const poolTrades = await getPoolTrades(pool);
-    if (poolTrades.length) {
-      const trades = poolTrades.map((t) => ({
-        txHash: t.txHash,
-        type: t.kind,
-        price: t.priceUsd,
-        amount: t.tokenAmount,
-        value: t.valueUsd,
-        wallet: shortWallet(t.maker),
-        timestamp: t.timestamp,
-      }));
-      return NextResponse.json({ trades });
-    }
+  const tokenTrades = await getTokenTrades(address);
+  if (tokenTrades.length) {
+    const trades = tokenTrades.map((t) => ({
+      txHash: t.txHash,
+      type: t.type,
+      price: t.price,
+      amount: t.amount,
+      value: t.value,
+      wallet: shortWallet(t.maker),
+      timestamp: t.timestamp,
+    }));
+    return NextResponse.json({ trades });
   }
 
   return NextResponse.json({ trades: generateMockTrades(address) });

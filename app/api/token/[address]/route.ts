@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { isValidSolanaAddress } from "@/lib/validation";
-import { getTokenPair } from "@/lib/dexscreener";
-import { num } from "@/lib/num";
+import { getTokenOverview } from "@/lib/birdeye";
 
-// Single-token overview via DexScreener (most-liquid Solana pair). Falls back to
-// a neutral "unknown token" shape when DexScreener has no data for the address.
+// Single-token overview via BirdEye. Falls back to a neutral "unknown token"
+// shape when BirdEye has no data (or no API key is configured).
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ address: string }> }
@@ -15,24 +14,9 @@ export async function GET(
     return NextResponse.json({ error: "Invalid token address" }, { status: 400 });
   }
 
-  const pair = await getTokenPair(address);
-
-  if (pair?.baseToken) {
-    return NextResponse.json({
-      token: {
-        address,
-        symbol: pair.baseToken.symbol,
-        name: pair.baseToken.name,
-        price: num(pair.priceUsd),
-        // DexScreener priceChange.h24 is already a percent.
-        priceChange24hPercent: num(pair.priceChange?.h24),
-        v24hUSD: num(pair.volume?.h24),
-        mc: num(pair.marketCap ?? pair.fdv),
-        // DexScreener does not expose holder counts.
-        holder: 0,
-        logoURI: pair.info?.imageUrl ?? undefined,
-      },
-    });
+  const overview = await getTokenOverview(address);
+  if (overview) {
+    return NextResponse.json({ token: overview });
   }
 
   return NextResponse.json({
@@ -42,9 +26,13 @@ export async function GET(
       name: "Unknown Token",
       price: 0,
       priceChange24hPercent: 0,
+      priceChange: { m5: 0, h1: 0, h6: 0, h24: 0 },
       v24hUSD: 0,
+      liquidity: 0,
       mc: 0,
+      txns24h: { buys: 0, sells: 0 },
       holder: 0,
+      socials: [],
     },
   });
 }

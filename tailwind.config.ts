@@ -10,29 +10,41 @@ const config: Config = {
     extend: {
       colors: {
         accent: {
-          green: "#00FFA3",
-          purple: "#6B5CFF",
+          green: "#16a34a",
+          teal: "#06b6d4",
+          purple: "#8b5cf6",
+          indigo: "#5b5bd6",
+          // Chad Wallet brand gold — retained for completeness, but on the new
+          // light theme the active/brand accent is indigo (see globals.css).
+          gold: "#5b5bd6",
         },
+        // Primary foreground/dark token. Used (with opacity modifiers) for text,
+        // borders and subtle surfaces across the light theme: text-ink,
+        // text-ink/60, border-ink/[0.08], bg-ink/[0.04], etc.
+        ink: "#0e1116",
         bg: {
-          primary: "#030305",
-          secondary: "#0A0A0F",
-          card: "#0D0D15",
-          border: "rgba(255,255,255,0.06)",
+          primary: "#f4f5f7",
+          secondary: "#ffffff",
+          card: "#ffffff",
+          border: "rgba(14,17,22,0.08)",
         },
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Space Grotesk", "system-ui", "sans-serif"],
+        sans: ["var(--font-body)", "Inter", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
       backgroundImage: {
         "grid-pattern":
-          "linear-gradient(rgba(0,255,163,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,163,0.03) 1px, transparent 1px)",
+          "linear-gradient(rgba(14,17,22,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(14,17,22,0.045) 1px, transparent 1px)",
         "glow-green":
-          "radial-gradient(ellipse at center, rgba(0,255,163,0.15) 0%, transparent 70%)",
+          "radial-gradient(ellipse at center, rgba(34,197,94,0.15) 0%, transparent 70%)",
         "glow-purple":
-          "radial-gradient(ellipse at center, rgba(107,92,255,0.15) 0%, transparent 70%)",
+          "radial-gradient(ellipse at center, rgba(91,91,214,0.15) 0%, transparent 70%)",
+        "accent-gradient":
+          "linear-gradient(90deg, #22c55e 0%, #06b6d4 50%, #8b5cf6 100%)",
         "hero-gradient":
-          "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,255,163,0.12) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 50%, rgba(107,92,255,0.10) 0%, transparent 60%)",
+          "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(34,197,94,0.10) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 50%, rgba(91,91,214,0.12) 0%, transparent 60%)",
       },
       backgroundSize: {
         grid: "40px 40px",
@@ -75,9 +87,11 @@ const config: Config = {
         },
       },
       boxShadow: {
-        "glow-green": "0 0 40px rgba(0,255,163,0.15)",
-        "glow-purple": "0 0 40px rgba(107,92,255,0.15)",
-        "card-hover": "0 20px 60px rgba(0,255,163,0.08), 0 0 0 1px rgba(0,255,163,0.12)",
+        "glow-green": "0 10px 30px rgba(22,163,74,0.18)",
+        "glow-purple": "0 10px 30px rgba(91,91,214,0.18)",
+        "glow-indigo": "0 10px 30px rgba(91,91,214,0.22)",
+        card: "0 1px 2px rgba(14,17,22,0.04), 0 4px 16px rgba(14,17,22,0.04)",
+        "card-hover": "0 18px 50px rgba(14,17,22,0.10), 0 0 0 1px rgba(14,17,22,0.06)",
       },
     },
   },

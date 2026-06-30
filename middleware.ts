@@ -19,11 +19,11 @@ const SECURITY_HEADERS: Record<string, string> = {
     // Privy loads Cloudflare Turnstile (captcha) scripts.
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.dexscreener.com https://*.amazonaws.com https://assets.coingecko.com https://coin-images.coingecko.com https://raw.githubusercontent.com https://*.arweave.net https://shdw-drive.genesysgo.net https://auth.privy.io https://explorer-api.walletconnect.com https://*.walletconnect.com",
+    "img-src 'self' data: blob: https://images.unsplash.com https://*.dexscreener.com https://*.amazonaws.com https://assets.coingecko.com https://coin-images.coingecko.com https://raw.githubusercontent.com https://*.arweave.net https://shdw-drive.genesysgo.net https://auth.privy.io https://explorer-api.walletconnect.com https://*.walletconnect.com",
     // Privy SDK calls auth.privy.io + its embedded-wallet RPCs, and the
     // bundled WalletConnect transport opens relay websockets. Without these
     // the SDK throws "Failed to fetch" and never reaches `ready`.
-    "connect-src 'self' https://api.dexscreener.com https://api.geckoterminal.com https://api.mainnet-beta.solana.com https://quote-api.jup.ag https://station.jup.ag https://auth.privy.io https://*.privy.io https://*.rpc.privy.systems https://explorer-api.walletconnect.com https://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.com wss://*.walletconnect.org wss://www.walletlink.org",
+    "connect-src 'self' https://public-api.birdeye.so https://api.mainnet-beta.solana.com https://quote-api.jup.ag https://station.jup.ag https://auth.privy.io https://*.privy.io https://*.rpc.privy.systems https://explorer-api.walletconnect.com https://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.com wss://*.walletconnect.org wss://www.walletlink.org",
     "font-src 'self' data:",
     // Privy renders its login modal + embedded wallet inside iframes.
     "frame-src 'self' https://auth.privy.io https://challenges.cloudflare.com https://verify.walletconnect.com https://verify.walletconnect.org",

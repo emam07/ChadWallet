@@ -78,8 +78,7 @@ describe('Security Headers (OWASP A05)', () => {
 
     it('connect-src whitelists only known API endpoints', () => {
       expect(csp).toContain('connect-src');
-      expect(csp).toContain('https://api.dexscreener.com');
-      expect(csp).toContain('https://api.geckoterminal.com');
+      expect(csp).toContain('https://public-api.birdeye.so');
     });
 
     it("base-uri 'self' prevents base tag injection", () => {

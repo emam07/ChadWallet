@@ -1,0 +1,657 @@
+/* =============================================================================
+   ChadWallet — Landing page styles ("Deep Space Minimalism" theme).
+
+   Direction (prompts/landinguichange.md): the astronaut wallpaper is cinematic,
+   not cyberpunk — cold navy sky, warm orange rim light, white moon. The UI is
+   "70% Vercel / 20% Apple / 10% Fomo.family": restrained, premium, letting the
+   artwork stay the focal point. Blue (#4D8CFF) is the single brand accent; warm
+   orange (#F6A84D) appears only on active/hover/highlight accents.
+
+   SCOPING: every rule below is namespaced under `.landing-root` so it cannot
+   leak into the trading dashboard, which keeps its own light design system and
+   shares globals.css / tailwind.config.
+   ============================================================================= */
+
+.landing-root {
+  /* Surfaces */
+  --bg: #030712;            /* almost black, hint of blue */
+  --section: #07111f;       /* section backdrops */
+  --card: #0b1626;          /* cards */
+  --card-hover: #111c2d;    /* elevated / hover */
+
+  /* Accents */
+  --accent: #4d8cff;        /* primary blue */
+  --accent-hover: #79a8ff;  /* hover blue */
+  --warm: #f6a84d;          /* warm highlight — use sparingly */
+
+  /* Text */
+  --heading: #f7f8fa;       /* headings, logo, key numbers */
+  --body: #aab4c4;          /* body text — never pure white */
+  --muted: #6e7b91;         /* secondary text */
+
+  /* Lines + state */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-2: rgba(255, 255, 255, 0.1);
+  --success: #3ddc97;
+  --danger: #ff6b6b;
+  --glow: rgba(91, 140, 255, 0.18);   /* soft, subtle glow */
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+
+  position: relative;
+  background: var(--bg);
+  color: var(--body);
+  font-family: var(--font-body), "Inter", system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.landing-root h1,
+.landing-root h2,
+.landing-root h3 {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  letter-spacing: -0.02em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.landing-root ::selection {
+  background: rgba(77, 140, 255, 0.28);
+  color: var(--heading);
+}
+
+/* ── Scroll reveal (IntersectionObserver toggles .visible) ─────────────────── */
+.landing-root .animate-on-scroll {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.landing-root .animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* =============================================================================
+   1. NAVBAR
+   ============================================================================= */
+.landing-root .navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 40px;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 0.3s ease-out, backdrop-filter 0.3s ease-out, border-color 0.3s ease-out, padding 0.3s ease-out;
+}
+/* Subtle glass once scrolled (spec: blur 12px, rgba(14,23,36,.55)). */
+.landing-root .navbar.scrolled {
+  background: rgba(14, 23, 36, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 40px;
+}
+.landing-root .nav-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.04em;
+  text-transform: lowercase;
+  color: var(--heading);
+}
+.landing-root .nav-logo-img {
+  width: auto;
+  height: 30px;
+  display: block;
+}
+.landing-root .nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.landing-root .store-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  padding: 6px 14px;
+  color: var(--body);
+  font-size: 11px;
+  line-height: 1.1;
+  transition: border-color 0.3s ease-out, background 0.3s ease-out, color 0.3s ease-out;
+}
+.landing-root .store-btn:hover {
+  border-color: var(--accent);
+  background: var(--card-hover);
+  color: var(--heading);
+}
+.landing-root .store-btn b {
+  font-weight: 700;
+  color: var(--heading);
+}
+.landing-root .login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  color: var(--heading);
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid var(--border-2);
+  transition: background 0.3s ease-out, border-color 0.3s ease-out;
+}
+.landing-root .login-btn:hover {
+  background: var(--card-hover);
+  border-color: var(--accent);
+}
+.landing-root .nav-burger {
+  display: none;
+  color: var(--heading);
+  padding: 6px;
+}
+
+/* =============================================================================
+   2. HERO
+   ============================================================================= */
+.landing-root .hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+}
+
+/* Full-bleed hero photo (public/backgroudimage.jpg — astronaut in space). */
+.landing-root .hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url("/backgroudimage.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* Overlay so the wallpaper never abruptly ends — it fades into the page bg
+   (#030712) below it (spec: "Hero Overlay … the next section naturally blends"). */
+.landing-root .hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to bottom, rgba(3, 7, 18, 0) 0%, rgba(3, 7, 18, 0.5) 55%, #030712 100%);
+}
+.landing-root .hero-content {
+  position: relative;
+  z-index: 3;
+  max-width: 820px;
+  padding: 0 24px;
+}
+.landing-root .hero-logo {
+  display: block;
+  width: clamp(72px, 11vw, 120px);
+  height: auto;
+  margin: 0 auto 18px;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.55));
+}
+.landing-root .hero h1 {
+  font-size: clamp(56px, 9vw, 104px);
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: -0.04em;
+  text-transform: lowercase;
+  line-height: 0.95;
+  margin-bottom: 18px;
+}
+.landing-root .hero-sub-bold {
+  font-size: clamp(22px, 3.5vw, 36px);
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: 12px;
+}
+.landing-root .hero-sub-light {
+  font-size: 17px;
+  color: var(--body);
+  margin-bottom: 36px;
+}
+.landing-root .hero-ctas {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+/* Primary CTA — clean blue gradient (spec: linear-gradient(135deg,#4D8CFF,#79A8FF)). */
+.landing-root .btn-primary {
+  background: linear-gradient(135deg, #4d8cff, #79a8ff);
+  color: #fff;
+  font-weight: 700;
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-size: 15px;
+  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+}
+.landing-root .btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 34px var(--glow);
+}
+.landing-root .btn-secondary {
+  background: var(--card);
+  border: 1px solid var(--border-2);
+  color: var(--heading);
+  font-weight: 600;
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-size: 15px;
+  transition: border-color 0.3s ease-out, background 0.3s ease-out, transform 0.3s ease-out;
+}
+.landing-root .btn-secondary:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  background: var(--card-hover);
+}
+/* Gentle drift — no rotation, no bounce (spec: "No bouncing"). */
+@keyframes cw-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+/* =============================================================================
+   3. LIVE TICKER STRIP
+   ============================================================================= */
+.landing-root .ticker-strip {
+  background: var(--section);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 4;
+}
+.landing-root .ticker-inner {
+  display: flex;
+  gap: 48px;
+  width: max-content;
+  animation: cw-ticker-scroll 70s linear infinite;
+}
+.landing-root .ticker-strip:hover .ticker-inner {
+  animation-play-state: paused;
+}
+.landing-root .ticker-item {
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 14px;
+  font-family: var(--font-geist-mono), "JetBrains Mono", monospace;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.3s ease-out, transform 0.3s ease-out;
+}
+.landing-root .ticker-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
+}
+.landing-root .ticker-item b {
+  color: var(--heading);
+  margin-right: 2px;
+}
+.landing-root .ticker-up { color: var(--success); }
+.landing-root .ticker-down { color: var(--danger); }
+@keyframes cw-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* =============================================================================
+   4. BENTO GRID — "never miss a flip"
+   ============================================================================= */
+.landing-root .bento-section {
+  padding: 110px 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.landing-root .bento-section h2 {
+  font-size: clamp(32px, 4vw, 44px);
+  font-weight: 700;
+  color: var(--heading);
+}
+.landing-root .bento-section .subhead {
+  color: var(--muted);
+  font-size: 16px;
+  margin: 10px 0 48px;
+}
+.landing-root .bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.landing-root .bento-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 26px;
+  overflow: hidden;
+  transition: border-color 0.3s ease-out, transform 0.3s ease-out, background 0.3s ease-out;
+}
+.landing-root .bento-card:hover {
+  border-color: var(--border-2);
+  background: var(--card-hover);
+  transform: translateY(-3px) scale(1.01);
+}
+.landing-root .bento-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.landing-root .bento-title {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.25;
+  margin-bottom: 18px;
+}
+
+/* App screenshot inside each bento card (replaces the old hand-built mocks).
+   These are tall portrait marketing shots, so the image is contained (not
+   cropped) and scaled down so the full app content stays visible. */
+.landing-root .bento-shot {
+  position: relative;
+  width: 100%;
+  height: 340px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--section);
+  border: 1px solid var(--border);
+}
+.landing-root .bento-shot img {
+  object-fit: contain !important;
+  object-position: center !important;
+  transition: transform 0.4s ease-out;
+}
+.landing-root .bento-card:hover .bento-shot img {
+  transform: scale(1.03);
+}
+
+/* =============================================================================
+   5. SHOWCASE — desktop + phone mockups
+   ============================================================================= */
+.landing-root .showcase-section {
+  position: relative;
+  padding: 60px 24px 120px;
+  overflow: hidden;
+}
+.landing-root .showcase-glow {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 760px;
+  height: 520px;
+  background: radial-gradient(ellipse at center, rgba(91, 140, 255, 0.16) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.landing-root .mockup-container {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+}
+
+/* ── Apple Studio Display style monitor ──────────────────────────────────────
+   Layered, not flattened: an outer aluminium-edged bezel housing wraps a black
+   screen; the dashboard is an absolutely-positioned child clipped inside the
+   screen. A separate neck + base sit below. Nothing here is baked into an image
+   so the screen content stays fully swappable. */
+.landing-root .studio-monitor {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 860px;
+  will-change: transform;
+}
+.landing-root .studio-float {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  will-change: transform;
+}
+/* Bezel housing — uniform dark bezel with a thin brushed-aluminium outer edge. */
+.landing-root .studio-bezel {
+  position: relative;
+  width: 100%;
+  padding: 14px;                 /* bezel thickness around the screen */
+  border-radius: 22px;
+  background: linear-gradient(160deg, #15171c 0%, #0a0b0e 60%, #050608 100%);
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.06) inset,   /* top edge highlight */
+    0 -2px 0 rgba(0, 0, 0, 0.6) inset,         /* bottom edge shade */
+    0 0 0 1px rgba(170, 180, 200, 0.18),       /* aluminium rim */
+    0 50px 110px rgba(0, 0, 0, 0.7);           /* drop shadow on the scene */
+}
+/* The actual display — clips the dashboard via overflow + absolute child. */
+.landing-root .studio-screen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--section);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8) inset;
+}
+/* Screen content. Inset 0 = flush to the bezel opening; nudge here to reposition
+   the dashboard inside the screen without touching the frame. */
+.landing-root .studio-display {
+  position: absolute;
+  inset: 0;
+}
+/* Soft diagonal glass glare across the panel. */
+.landing-root .studio-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 32%);
+}
+/* Aluminium stand — thin neck into a flat elliptical foot. */
+.landing-root .studio-neck {
+  width: 132px;
+  height: 52px;
+  margin-top: -1px;
+  background: linear-gradient(90deg, #6b7280 0%, #cdd3dc 28%, #aeb6c2 50%, #cdd3dc 72%, #6b7280 100%);
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 8px 16px rgba(0, 0, 0, 0.45);
+}
+.landing-root .studio-base {
+  width: 250px;
+  height: 16px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #c4cad4 0%, #8b929e 100%);
+  box-shadow: 0 22px 34px rgba(0, 0, 0, 0.5);
+}
+.landing-root .dash {
+  display: grid;
+  grid-template-columns: 150px 1fr 200px;
+  height: 100%;
+  background: var(--card);
+}
+.landing-root .dash-side { border-right: 1px solid var(--border); padding: 14px 10px; }
+.landing-root .dash-side-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px;
+  border-radius: 8px; font-size: 12px; color: var(--muted); margin-bottom: 4px;
+}
+.landing-root .dash-side-item.active { background: rgba(77, 140, 255, 0.12); color: var(--accent); font-weight: 700; }
+.landing-root .dash-chart { padding: 16px; display: flex; flex-direction: column; }
+.landing-root .dash-chart-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; color: var(--heading); }
+.landing-root .dash-price { font-size: 22px; font-weight: 800; color: var(--heading); font-family: var(--font-geist-mono), monospace; }
+.landing-root .dash-change { font-size: 13px; font-weight: 700; color: var(--success); }
+.landing-root .dash-graph { flex: 1; position: relative; }
+.landing-root .dash-panel { border-left: 1px solid var(--border); padding: 16px; }
+.landing-root .dash-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.landing-root .dash-tab { flex: 1; text-align: center; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+.landing-root .dash-tab.buy { background: var(--success); color: #042; }
+.landing-root .dash-tab.sell { background: var(--section); color: var(--muted); }
+.landing-root .dash-field {
+  background: var(--section); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; color: var(--body); margin-bottom: 8px;
+  display: flex; justify-content: space-between;
+}
+.landing-root .dash-cta {
+  width: 100%; padding: 11px; border-radius: 10px; margin-top: 6px;
+  background: linear-gradient(135deg, #4d8cff, #79a8ff); color: #fff; font-weight: 700; font-size: 13px; text-align: center;
+}
+
+/* Phone — outer element handles position + mouse parallax (transparent),
+   inner .phone-float is the physical handset body that floats + tilts. */
+.landing-root .phone-frame {
+  position: relative;
+  width: 230px;
+  height: 472px;
+  margin-left: -70px;
+  margin-bottom: -30px;
+  flex-shrink: 0;
+  z-index: 2;
+  will-change: transform;
+}
+.landing-root .phone-float {
+  width: 100%;
+  height: 100%;
+  border-radius: 38px;
+  padding: 6px;
+  background: linear-gradient(145deg, #1a2740, #07111f);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border);
+  will-change: transform;
+}
+.landing-root .phone-screen {
+  position: relative;
+  width: 100%; height: 100%;
+  border-radius: 32px;
+  overflow: hidden;
+  background: #000;
+}
+.landing-root .phone-notch {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 90px; height: 22px; background: #000; border-radius: 0 0 14px 14px; z-index: 5;
+}
+.landing-root .phone-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 32px;
+}
+
+@media (max-width: 900px) {
+  .landing-root .bento-grid { grid-template-columns: 1fr; }
+  /* Stack vertically: monitor on top, phone below it (spec mobile layout). */
+  .landing-root .mockup-container { flex-direction: column; align-items: center; gap: 30px; }
+  .landing-root .studio-monitor { max-width: 560px; }
+  .landing-root .phone-frame { margin: 0; }
+  .landing-root .navbar { padding: 14px 18px; }
+  .landing-root .navbar.scrolled { padding: 10px 18px; }
+  .landing-root .nav-actions > .store-btn { display: none; }
+  .landing-root .nav-burger { display: inline-flex; }
+  .landing-root .dash { grid-template-columns: 1fr; }
+  .landing-root .dash-side, .landing-root .dash-panel { display: none; }
+}
+
+/* =============================================================================
+   6. STATS BAR
+   ============================================================================= */
+.landing-root .stats-bar {
+  background: var(--section);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding: 56px 24px;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+.landing-root .stat { text-align: center; }
+.landing-root .stat-value {
+  display: block;
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 44px;
+  font-weight: 800;
+  color: var(--heading);
+}
+.landing-root .stat-value .accent { color: var(--accent); }
+.landing-root .stat-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+/* =============================================================================
+   7. CTA SECTION
+   ============================================================================= */
+.landing-root .cta-section {
+  background: radial-gradient(ellipse at center, rgba(77, 140, 255, 0.12) 0%, var(--bg) 70%);
+  text-align: center;
+  padding: 140px 24px;
+}
+.landing-root .cta-section h2 {
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: -0.04em;
+  text-transform: lowercase;
+  margin-bottom: 12px;
+}
+.landing-root .cta-section p {
+  color: var(--body);
+  font-size: 18px;
+  margin-bottom: 32px;
+}
+
+/* =============================================================================
+   8. FOOTER
+   ============================================================================= */
+.landing-root .footer {
+  background: var(--section);
+  border-top: 1px solid var(--border);
+  padding: 48px 40px 32px;
+}
+.landing-root .footer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.landing-root .footer .nav-logo { font-size: 20px; }
+.landing-root .social-icons { display: flex; gap: 16px; }
+.landing-root .social-icons a { color: var(--muted); transition: color 0.3s ease-out; }
+.landing-root .social-icons a:hover { color: var(--accent); }
+.landing-root .social-icons svg { width: 20px; height: 20px; }
+.landing-root .footer-links {
+  display: flex;
+  gap: 24px;
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.landing-root .footer-links a { color: var(--muted); transition: color 0.3s ease-out; }
+.landing-root .footer-links a:hover { color: var(--heading); }
+.landing-root .footer-copy { color: var(--muted); font-size: 13px; }

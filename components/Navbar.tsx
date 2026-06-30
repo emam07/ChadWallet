@@ -1,169 +1,177 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
-import logoSrc from "../assets/logo/light.png";
-import { AuthButton } from "@/components/AuthButton";
+import { usePrivy } from "@privy-io/react-auth";
+import { LogOut, Menu, Wallet, X } from "lucide-react";
 
-const navLinks = [
-  { label: "Features", href: "#features" },
-  { label: "Market", href: "#market" },
-  { label: "How it Works", href: "#how-it-works" },
-];
+const APP_STORE_URL = "https://apps.apple.com/us/app/chadwallet/id6757367474";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
+
+// NEXT_PUBLIC_* vars are inlined at build time, so this is a reliable signal on
+// both server and client (no hydration mismatch). If false in a deployed build,
+// <PrivyProvider> never mounted and login() can never open the popup — see
+// app/providers.tsx and components/AuthButton.tsx for the full rationale.
+const PRIVY_CONFIGURED = Boolean(
+  process.env.NEXT_PUBLIC_PRIVY_APP_ID &&
+    process.env.NEXT_PUBLIC_PRIVY_APP_ID !== "your-privy-app-id-here"
+);
+
+function truncate(addr: string) {
+  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+}
+
+/** Dark-themed login / account control. Wallet-connect logic via Privy is
+ *  preserved verbatim from the previous AuthButton — only the styling changed. */
+function LoginControl({ onAction }: { onAction?: () => void }) {
+  const { ready, authenticated, user, login, logout } = usePrivy();
+
+  if (ready && authenticated) {
+    const label =
+      user?.wallet?.address
+        ? truncate(user.wallet.address)
+        : user?.email?.address ?? user?.google?.email ?? user?.apple?.email ?? "Account";
+    return (
+      <div className="nav-account" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span className="login-btn" style={{ background: "#0b1626" }}>
+          <span style={{ width: 6, height: 6, borderRadius: 999, background: "#3ddc97", display: "inline-block" }} />
+          {label}
+        </span>
+        <button
+          className="login-btn"
+          aria-label="Log out"
+          onClick={() => {
+            logout();
+            onAction?.();
+          }}
+          style={{ padding: "10px 14px" }}
+        >
+          <LogOut size={15} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      className="login-btn"
+      aria-busy={PRIVY_CONFIGURED && !ready}
+      title={
+        PRIVY_CONFIGURED
+          ? undefined
+          : "Login unavailable: NEXT_PUBLIC_PRIVY_APP_ID is not configured on this deployment."
+      }
+      onClick={() => {
+        if (!PRIVY_CONFIGURED) {
+          console.error(
+            "[ChadWallet] Login is unavailable because NEXT_PUBLIC_PRIVY_APP_ID was not " +
+              "set when this build was created. Add it in your host's Environment Variables and redeploy."
+          );
+          return;
+        }
+        if (!ready) return;
+        login();
+        onAction?.();
+      }}
+    >
+      <Wallet size={15} className={PRIVY_CONFIGURED && !ready ? "animate-pulse" : undefined} />
+      Login
+    </button>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3.18 23.5c.34.19.72.22 1.08.07l12.2-7.05-2.61-2.61L3.18 23.5z" fill="#EA4335" />
+      <path d="M21.36 10.27L18.7 8.74l-2.95 2.95 2.95 2.95 2.69-1.55a1.52 1.52 0 0 0 0-2.82z" fill="#FBBC04" />
+      <path d="M2.1.5A1.5 1.5 0 0 0 1.5 1.73v20.54a1.5 1.5 0 0 0 .6 1.23l.08.06 11.52-11.52v-.27L2.18.44 2.1.5z" fill="#4285F4" />
+      <path d="M13.85 12.04l2.9-2.9-12.2-7.07a1.54 1.54 0 0 0-1.37-.1l10.67 10.07z" fill="#34A853" />
+    </svg>
+  );
+}
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <>
-      <motion.header
-        initial={{ y: -80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-          scrolled
-            ? "py-3 glass border-b border-white/5"
-            : "py-5 bg-transparent"
-        )}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-          <a href="/" className="flex items-center" aria-label="ChadWallet home">
-            <Image
-              src={logoSrc}
-              alt="ChadWallet"
-              height={40}
-              style={{ width: "auto", height: "40px" }}
-              priority
-            />
-          </a>
+    <nav className={`navbar${scrolled ? " scrolled" : ""}`}>
+      <a href="/" className="nav-logo" aria-label="ChadWallet home">
+        <img src="/logo/dark.png" alt="" className="nav-logo-img" aria-hidden="true" />
+        chad wallet
+      </a>
 
-          <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="px-4 py-2 text-sm text-white/60 hover:text-white rounded-lg hover:bg-white/5 transition-all duration-200"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
+      <div className="nav-actions">
+        <a className="store-btn" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+          <AppleIcon />
+          <span>
+            Download on the
+            <br />
+            <b>App Store</b>
+          </span>
+        </a>
+        <a className="store-btn" href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">
+          <GoogleIcon />
+          <span>
+            Get it on
+            <br />
+            <b>Google Play</b>
+          </span>
+        </a>
+        <LoginControl />
+        <button
+          className="nav-burger"
+          aria-label="Toggle menu"
+          onClick={() => setMobileOpen((v) => !v)}
+          style={{ display: undefined }}
+        >
+          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </div>
 
-          <div className="hidden md:flex items-center gap-2">
-            <a
-              href="https://apps.apple.com/us/app/chadwallet/id6757367474"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Download ChadWallet on the App Store"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass border border-white/10 hover:border-white/25 transition-all duration-200 group"
-            >
-              <svg
-                className="w-4 h-4 text-white/80 group-hover:text-white transition-colors"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-              </svg>
-              <div className="flex flex-col leading-none">
-                <span className="text-[9px] text-white/50">Download on the</span>
-                <span className="text-[11px] font-semibold text-white/90">App Store</span>
-              </div>
+      {mobileOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 64,
+            left: 16,
+            right: 16,
+            zIndex: 49,
+            background: "rgba(11,22,38,0.97)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 16,
+            padding: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <LoginControl onAction={() => setMobileOpen(false)} />
+          <div style={{ display: "flex", gap: 10 }}>
+            <a className="store-btn" style={{ flex: 1, justifyContent: "center" }} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+              <AppleIcon /> App Store
             </a>
-
-            <a
-              href="https://play.google.com/store/apps/details?id=xyz.chadwallet.www"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Get ChadWallet on Google Play"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass border border-white/10 hover:border-white/25 transition-all duration-200 group"
-            >
-              <svg
-                className="w-4 h-4 group-hover:opacity-100 opacity-80 transition-opacity"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <path d="M3.18 23.5c.34.19.72.22 1.08.07l12.2-7.05-2.61-2.61L3.18 23.5z" fill="#EA4335"/>
-                <path d="M21.36 10.27L18.7 8.74l-2.95 2.95 2.95 2.95 2.69-1.55a1.52 1.52 0 0 0 0-2.82z" fill="#FBBC04"/>
-                <path d="M2.1.5A1.5 1.5 0 0 0 1.5 1.73v20.54a1.5 1.5 0 0 0 .6 1.23l.08.06 11.52-11.52v-.27L2.18.44 2.1.5z" fill="#4285F4"/>
-                <path d="M13.85 12.04l2.9-2.9-12.2-7.07a1.54 1.54 0 0 0-1.37-.1l10.67 10.07z" fill="#34A853"/>
-              </svg>
-              <div className="flex flex-col leading-none">
-                <span className="text-[9px] text-white/50">Get it on</span>
-                <span className="text-[11px] font-semibold text-white/90">Google Play</span>
-              </div>
+            <a className="store-btn" style={{ flex: 1, justifyContent: "center" }} href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">
+              <GoogleIcon /> Google Play
             </a>
-
-            <AuthButton />
           </div>
-
-          <button
-            className="md:hidden p-2 text-white/60 hover:text-white"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
-      </motion.header>
-
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-x-0 top-0 z-40 pt-20 pb-6 px-4 glass border-b border-white/5 md:hidden"
-          >
-            <nav className="flex flex-col gap-1 mb-4">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="px-4 py-3 text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-            <div className="px-4 mb-3">
-              <AuthButton fullWidth onAction={() => setMobileOpen(false)} />
-            </div>
-            <div className="flex gap-2 px-4">
-              <a
-                href="https://apps.apple.com/us/app/chadwallet/id6757367474"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setMobileOpen(false)}
-                className="flex-1 py-3 text-center text-sm font-bold bg-accent-green text-black rounded-xl"
-              >
-                App Store
-              </a>
-              <a
-                href="https://play.google.com/store/apps/details?id=xyz.chadwallet.www"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setMobileOpen(false)}
-                className="flex-1 py-3 text-center text-sm font-bold glass border border-white/10 rounded-xl text-white"
-              >
-                Google Play
-              </a>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+      )}
+    </nav>
   );
 }
