@@ -63,21 +63,21 @@ export function PriceChart({ address }: { address: string }) {
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { type: ColorType.Solid, color: "transparent" },
-          textColor: "rgba(14,17,22,0.55)",
+          textColor: "rgba(231,233,234,0.55)",
         },
         grid: {
-          vertLines: { color: "rgba(14,17,22,0.06)" },
-          horzLines: { color: "rgba(14,17,22,0.06)" },
+          vertLines: { color: "rgba(255,255,255,0.05)" },
+          horzLines: { color: "rgba(255,255,255,0.05)" },
         },
         crosshair: {
-          vertLine: { color: "rgba(91,91,214,0.35)", width: 1 },
-          horzLine: { color: "rgba(91,91,214,0.35)", width: 1 },
+          vertLine: { color: "rgba(22,199,132,0.4)", width: 1 },
+          horzLine: { color: "rgba(22,199,132,0.4)", width: 1 },
         },
         rightPriceScale: {
-          borderColor: "rgba(14,17,22,0.10)",
+          borderColor: "rgba(255,255,255,0.08)",
         },
         timeScale: {
-          borderColor: "rgba(14,17,22,0.10)",
+          borderColor: "rgba(255,255,255,0.08)",
           timeVisible: true,
           secondsVisible: false,
         },
@@ -86,16 +86,16 @@ export function PriceChart({ address }: { address: string }) {
       });
 
       const candleSeries = chart.addSeries(CandlestickSeries, {
-        upColor: "#16a34a",
-        downColor: "#ef4444",
-        borderUpColor: "#16a34a",
-        borderDownColor: "#ef4444",
-        wickUpColor: "#16a34a",
-        wickDownColor: "#ef4444",
+        upColor: "#16c784",
+        downColor: "#f6465d",
+        borderUpColor: "#16c784",
+        borderDownColor: "#f6465d",
+        wickUpColor: "#16c784",
+        wickDownColor: "#f6465d",
       });
 
       const volumeSeries = chart.addSeries(HistogramSeries, {
-        color: "rgba(91,91,214,0.45)",
+        color: "rgba(255,255,255,0.18)",
         priceFormat: { type: "volume" },
         priceScaleId: "volume",
       });
@@ -168,8 +168,8 @@ export function PriceChart({ address }: { address: string }) {
         time: c.time as unknown,
         value: c.volume,
         color: c.close >= c.open
-          ? "rgba(22,163,74,0.4)"
-          : "rgba(239,68,68,0.4)",
+          ? "rgba(22,199,132,0.4)"
+          : "rgba(246,70,93,0.4)",
       }))
     );
 
@@ -181,15 +181,15 @@ export function PriceChart({ address }: { address: string }) {
   return (
     <div className="flex flex-col h-full">
       {/* Timeframe selector + Price/MCap toggle */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-ink/[0.06]">
+      <div className="flex items-center gap-1 px-4 py-2 border-b border-white/[0.06]">
         {TIMEFRAMES.map((tf) => (
           <button
             key={tf.value}
             onClick={() => setTimeframe(tf.value)}
             className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all ${
               timeframe === tf.value
-                ? "bg-accent-indigo/20 text-accent-indigo border border-accent-indigo/30"
-                : "text-ink/40 hover:text-ink/70 hover:bg-ink/[0.04]"
+                ? "bg-[#16c784]/15 text-[#16c784] border border-[#16c784]/30"
+                : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
             }`}
           >
             {tf.label}
@@ -197,11 +197,11 @@ export function PriceChart({ address }: { address: string }) {
         ))}
 
         {/* Price / Market-Cap denomination toggle */}
-        <div className="ml-auto flex items-center rounded-md bg-ink/[0.04] p-0.5">
+        <div className="ml-auto flex items-center rounded-md bg-white/[0.05] p-0.5">
           <button
             onClick={() => setDenom("price")}
             className={`px-2 py-0.5 text-[11px] rounded transition-all ${
-              denom === "price" ? "bg-accent-indigo/20 text-accent-indigo" : "text-ink/40 hover:text-ink/70"
+              denom === "price" ? "bg-[#16c784]/15 text-[#16c784]" : "text-white/40 hover:text-white/70"
             }`}
           >
             Price
@@ -211,7 +211,7 @@ export function PriceChart({ address }: { address: string }) {
             disabled={supply <= 0}
             title={supply > 0 ? "Show market cap" : "Market cap unavailable"}
             className={`px-2 py-0.5 text-[11px] rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-              denom === "mcap" ? "bg-accent-indigo/20 text-accent-indigo" : "text-ink/40 hover:text-ink/70"
+              denom === "mcap" ? "bg-[#16c784]/15 text-[#16c784]" : "text-white/40 hover:text-white/70"
             }`}
           >
             MCap

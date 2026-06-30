@@ -5,7 +5,23 @@ import dynamic from "next/dynamic";
 import { usePrivy } from "@privy-io/react-auth";
 import useSWR from "swr";
 import Image from "next/image";
-import { TrendingUp, TrendingDown, Copy, ExternalLink, X, Globe, Twitter, Link as LinkIcon, Search, Lock } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Copy,
+  ExternalLink,
+  X,
+  Globe,
+  Twitter,
+  Link as LinkIcon,
+  Search,
+  Lock,
+  Bell,
+  Coins,
+  Trophy,
+  Rss,
+  Plus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TrendingList } from "@/components/trade/TrendingList";
 import { TradesFeed } from "@/components/trade/TradesFeed";
@@ -15,7 +31,7 @@ import logoSrc from "@/assets/logo/light.png";
 
 const PriceChart = dynamic(
   () => import("@/components/trade/PriceChart").then((m) => ({ default: m.PriceChart })),
-  { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center text-ink/30 text-sm">Loading chart…</div> }
+  { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center text-white/30 text-sm">Loading chart…</div> }
 );
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -39,11 +55,21 @@ function truncate(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+// Top-nav sections from the reference. "Tokens" is the live trading view; the
+// rest are styled tabs kept for layout parity (Chad Wallet is a single-surface
+// trading app — they don't route anywhere yet).
+const NAV_TABS = [
+  { id: "alerts", label: "Alerts", icon: Bell },
+  { id: "tokens", label: "Tokens", icon: Coins },
+  { id: "leaderboard", label: "Leaderboard", icon: Trophy },
+  { id: "feed", label: "Feed", icon: Rss },
+] as const;
+
 function StatCol({ label, value, accent }: { label: string; value: ReactNode; accent?: string }) {
   return (
-    <div className="min-w-[72px]">
-      <div className="text-[10px] uppercase tracking-wide text-ink/30 mb-0.5">{label}</div>
-      <div className={cn("text-sm font-mono font-medium", accent ?? "text-ink")}>{value}</div>
+    <div className="min-w-[64px]">
+      <div className="text-[10px] uppercase tracking-wide text-white/35 mb-0.5">{label}</div>
+      <div className={cn("text-sm font-mono font-semibold", accent ?? "text-white")}>{value}</div>
     </div>
   );
 }
@@ -76,81 +102,75 @@ function TokenHeader({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 border-b border-ink/[0.06]">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 border-b border-white/[0.06]">
       {/* Token identity */}
       <div className="flex items-center gap-3">
         {logoURI ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logoURI} alt={symbol} className="w-12 h-12 rounded-full" />
+          <img src={logoURI} alt={symbol} className="w-11 h-11 rounded-full ring-1 ring-white/10" />
         ) : (
           <div
-            className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold"
-            style={{ background: "#f5c51820", color: "#f5c518" }}
+            className="w-11 h-11 rounded-full flex items-center justify-center text-base font-bold ring-1 ring-white/10"
+            style={{ background: "#16c78420", color: "#16c784" }}
           >
             {symbol[0]}
           </div>
         )}
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-ink text-base">{symbol}</span>
-            <span className="text-xs text-ink/40">{name}</span>
+            <span className="font-bold text-white text-base">{symbol}</span>
+            <span className="text-xs text-white/40 truncate max-w-[140px]">{name}</span>
             {/* Social / explorer icon row */}
             <span className="flex items-center gap-1.5 ml-1">
               {website && (
-                <a href={website} target="_blank" rel="noopener noreferrer" className="text-ink/30 hover:text-accent-indigo transition-colors" title="Website">
+                <a href={website} target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-[#16c784] transition-colors" title="Website">
                   <Globe className="w-3.5 h-3.5" />
                 </a>
               )}
               {socials.map((s) => (
-                <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className="text-ink/30 hover:text-accent-indigo transition-colors" title={s.type}>
+                <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-[#16c784] transition-colors" title={s.type}>
                   {s.type.toLowerCase() === "twitter" ? <Twitter className="w-3.5 h-3.5" /> : <LinkIcon className="w-3.5 h-3.5" />}
                 </a>
               ))}
-              <a href={`https://solscan.io/token/${address}`} target="_blank" rel="noopener noreferrer" className="text-ink/30 hover:text-accent-indigo transition-colors" title="Solscan">
+              <a href={`https://solscan.io/token/${address}`} target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-[#16c784] transition-colors" title="Solscan">
                 <Search className="w-3.5 h-3.5" />
               </a>
             </span>
           </div>
           <div className="flex items-center gap-1 mt-0.5">
-            <span className="font-mono text-[10px] text-ink/30">
-              {truncate(address)}
-            </span>
-            <button
-              onClick={copyAddress}
-              className="text-ink/30 hover:text-ink/60 transition-colors"
-            >
+            <span className="font-mono text-[10px] text-white/30">{truncate(address)}</span>
+            <button onClick={copyAddress} className="text-white/30 hover:text-white/70 transition-colors">
               <Copy className="w-3 h-3" />
             </button>
             <a
               href={`https://solscan.io/token/${address}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-ink/30 hover:text-ink/60 transition-colors"
+              className="text-white/30 hover:text-white/70 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
             </a>
-            {copied && (
-              <span className="text-[10px] text-accent-indigo">Copied!</span>
-            )}
+            {copied && <span className="text-[10px] text-[#16c784]">Copied!</span>}
           </div>
         </div>
       </div>
 
-      {/* 5-column labeled stats */}
-      <div className="flex items-center gap-6 ml-auto">
-        <StatCol label="Market Cap" value={formatNum(mc)} />
+      {/* Labeled stats strip */}
+      <div className="flex items-center gap-5 ml-auto">
         <StatCol label="Price" value={formatPrice(price)} />
         <StatCol
-          label="24H Change"
-          accent={isPositive ? "text-accent-green" : "text-red-400"}
+          label="24H"
+          accent={isPositive ? "text-[#16c784]" : "text-[#f6465d]"}
           value={
             <span className="flex items-center gap-1">
               {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              {isPositive ? "+" : ""}{change.toFixed(2)}%
+              {isPositive ? "+" : ""}
+              {change.toFixed(2)}%
             </span>
           }
         />
-        <StatCol label="24H Vol." value={formatNum(volume)} />
+        <StatCol label="Market cap" value={formatNum(mc)} />
+        <StatCol label="24H volume" value={formatNum(volume)} />
         <StatCol label="Liquidity" value={liquidity ? formatNum(liquidity) : "—"} />
       </div>
     </div>
@@ -162,29 +182,29 @@ function TokenHeader({
 // reached (or its data loaded) by a logged-out visitor.
 function LoginGate({ onLogin, busy }: { onLogin: () => void; busy: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-bg-primary text-ink px-6 text-center">
+    <div className="trade-root flex flex-col items-center justify-center h-screen px-6 text-center">
       <a href="/" className="flex items-center gap-2 mb-8">
         <Image src={logoSrc} alt="Chad Wallet" height={36} style={{ width: "auto", height: "36px" }} />
-        <span className="text-xl font-bold tracking-tight">
-          Chad <span className="text-accent-indigo">Wallet</span>
+        <span className="text-xl font-bold tracking-tight text-white">
+          Chad <span className="text-[#16c784]">Wallet</span>
         </span>
       </a>
-      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5 bg-accent-indigo/10 border border-accent-indigo/20">
-        <Lock className="w-5 h-5 text-accent-indigo" />
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5 bg-[#16c784]/10 border border-[#16c784]/20">
+        <Lock className="w-5 h-5 text-[#16c784]" />
       </div>
-      <h1 className="text-lg font-bold mb-2">Sign in to start trading</h1>
-      <p className="text-sm text-ink/40 max-w-sm mb-7">
+      <h1 className="text-lg font-bold mb-2 text-white">Sign in to start trading</h1>
+      <p className="text-sm text-white/45 max-w-sm mb-7">
         The trading dashboard is for signed-in chads only. Log in to view charts,
         live swaps, and place trades.
       </p>
       <button
         onClick={onLogin}
         disabled={busy}
-        className="px-7 py-3 text-sm font-bold bg-accent-indigo text-white rounded-xl hover:bg-accent-indigo/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-7 py-3 text-sm font-bold bg-[#16c784] text-black rounded-xl hover:bg-[#16c784]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {busy ? "Loading…" : "Log In / Sign Up"}
       </button>
-      <a href="/" className="mt-5 text-xs text-ink/30 hover:text-ink/60 transition-colors">
+      <a href="/" className="mt-5 text-xs text-white/30 hover:text-white/60 transition-colors">
         ← Back to home
       </a>
     </div>
@@ -200,6 +220,7 @@ export default function TradePage({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<string>("tokens");
   const { ready, authenticated, login } = usePrivy();
   const userLoggedIn = ready && authenticated;
 
@@ -228,7 +249,7 @@ export default function TradePage({
   // Auth gate — the trade page is unreachable until the user signs in.
   if (!ready) {
     return (
-      <div className="flex items-center justify-center h-screen bg-bg-primary text-ink/40 text-sm">
+      <div className="trade-root flex items-center justify-center h-screen text-white/40 text-sm">
         Loading…
       </div>
     );
@@ -238,60 +259,88 @@ export default function TradePage({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-bg-primary text-ink overflow-hidden">
+    <div className="trade-root flex flex-col h-screen overflow-hidden">
       {/* Top Navbar */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-ink/[0.06] bg-bg-primary/90 backdrop-blur-sm shrink-0 z-20">
-        {/* Left: wordmark + Trade tab (back button removed) */}
-        <div className="flex items-center gap-4 shrink-0">
+      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-[#0a0b0e]/90 backdrop-blur-sm shrink-0 z-20">
+        {/* Left: wordmark + section tabs */}
+        <div className="flex items-center gap-5 shrink-0">
           <a href="/" className="flex items-center gap-2 shrink-0">
-            <Image src={logoSrc} alt="Chad Wallet" height={28} style={{ width: "auto", height: "28px" }} />
-            <span className="hidden sm:inline text-sm font-bold tracking-tight text-ink">
-              Chad <span className="text-accent-indigo">Wallet</span>
+            <Image src={logoSrc} alt="Chad Wallet" height={26} style={{ width: "auto", height: "26px" }} />
+            <span className="hidden sm:inline text-sm font-bold tracking-tight text-white">
+              Chad <span className="text-[#16c784]">Wallet</span>
             </span>
           </a>
-          <nav className="hidden md:flex items-center gap-1">
-            <span className="px-3 py-1.5 text-xs font-semibold text-accent-indigo border-b-2 border-accent-indigo">
-              Trade
-            </span>
+          <nav className="hidden lg:flex items-center gap-0.5">
+            {NAV_TABS.map((t) => {
+              const Icon = t.icon;
+              const active = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                    active
+                      ? "bg-white/[0.06] text-white"
+                      : "text-white/45 hover:text-white/80 hover:bg-white/[0.03]"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {t.label}
+                </button>
+              );
+            })}
           </nav>
         </div>
 
-        {/* Center: token search */}
+        {/* Center: search */}
         <div className="flex-1 flex justify-center min-w-0">
           <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
             <input
               type="text"
-              placeholder="Search tokens..."
+              placeholder="Search for tokens or traders..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 text-xs bg-ink/[0.04] border border-ink/[0.06] rounded-lg text-ink placeholder-ink/30 focus:outline-none focus:border-accent-indigo/40"
+              className="w-full pl-8 pr-3 py-2 text-xs bg-white/[0.04] border border-white/[0.07] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-[#16c784]/40"
             />
           </div>
         </div>
 
-        {/* Right: mobile controls + connection status */}
+        {/* Right: balance + deposit + avatar */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Mobile (below tablet): trending toggle */}
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="md:hidden px-3 py-1.5 text-xs text-ink/60 border border-ink/10 rounded-lg hover:text-ink hover:border-ink/20 transition-all"
+            className="md:hidden px-3 py-1.5 text-xs text-white/60 border border-white/10 rounded-lg hover:text-white hover:border-white/20 transition-all"
           >
-            Trending
+            Tokens
           </button>
 
           {/* Mobile (below tablet): Buy/Sell — opens swap sheet, then returns to chart */}
           <button
             onClick={() => setSwapOpen(true)}
-            className="md:hidden px-4 py-1.5 text-xs font-bold bg-accent-green text-black rounded-lg hover:bg-accent-green/90 transition-all"
+            className="md:hidden px-4 py-1.5 text-xs font-bold bg-[#16c784] text-black rounded-lg hover:bg-[#16c784]/90 transition-all"
           >
-            Buy / Sell
+            Trade
           </button>
 
-          <span className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium glass border border-ink/10 rounded-lg text-ink/80">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
-            Connected
+          {/* Wallet balance — on-chain reads aren't wired, so this honestly reads $0.00. */}
+          <span className="hidden sm:flex items-center font-mono text-sm font-semibold text-white tabular-nums px-2">
+            $0.00
           </span>
+          <button
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-[#16c784] text-black rounded-lg hover:bg-[#16c784]/90 transition-all"
+            title="Deposit"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Deposit
+          </button>
+          <button
+            className="w-8 h-8 rounded-full shrink-0 ring-1 ring-white/10"
+            style={{ background: "linear-gradient(135deg,#f6465d,#16c784)" }}
+            title="Account"
+          />
         </div>
       </header>
 
@@ -300,18 +349,18 @@ export default function TradePage({
         {/* Left sidebar — trending tokens. Visible from tablet (md) up, narrower on tablet. */}
         <aside
           className={cn(
-            "w-[200px] lg:w-[268px] shrink-0 border-r border-ink/[0.06] bg-bg-primary overflow-hidden flex-col",
+            "w-[212px] lg:w-[272px] shrink-0 border-r border-white/[0.06] bg-[#0a0b0e] overflow-hidden flex-col",
             "hidden md:flex",
             // Mobile overlay (below tablet)
-            sidebarOpen && "fixed inset-0 z-30 flex w-full sm:w-80 bg-bg-primary/95 backdrop-blur-sm"
+            sidebarOpen && "fixed inset-0 z-30 flex w-full sm:w-80 bg-[#0a0b0e]/95 backdrop-blur-sm"
           )}
         >
           {sidebarOpen && (
-            <div className="flex items-center justify-between px-4 py-3 border-b border-ink/[0.06] md:hidden">
-              <span className="text-sm font-semibold">Trending</span>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] md:hidden">
+              <span className="text-sm font-semibold text-white">Tokens</span>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="text-ink/50 hover:text-ink text-xs"
+                className="text-white/50 hover:text-white text-xs"
               >
                 ✕ Close
               </button>
@@ -334,7 +383,7 @@ export default function TradePage({
           <TokenHeader address={address} tokenData={tokenData} />
 
           {/* Chart */}
-          <div className="flex-[0_0_280px] sm:flex-[0_0_320px] lg:flex-[0_0_340px] border-b border-ink/[0.06]">
+          <div className="flex-[0_0_280px] sm:flex-[0_0_320px] lg:flex-[0_0_360px] border-b border-white/[0.06]">
             <PriceChart address={address} />
           </div>
 
@@ -345,10 +394,7 @@ export default function TradePage({
         </main>
 
         {/* Right sidebar — swap panel. Narrower on tablet so all three panels fit. */}
-        <aside className="w-[260px] lg:w-[300px] xl:w-[320px] shrink-0 border-l border-ink/[0.06] bg-bg-secondary/30 overflow-hidden hidden md:flex flex-col">
-          <div className="px-4 py-3 border-b border-ink/[0.06]">
-            <span className="text-sm font-semibold text-ink">Trade</span>
-          </div>
+        <aside className="w-[264px] lg:w-[312px] xl:w-[332px] shrink-0 border-l border-white/[0.06] bg-[#0c0d11] overflow-hidden hidden md:flex flex-col">
           <SwapPanel
             address={address}
             symbol={symbol}
@@ -368,14 +414,12 @@ export default function TradePage({
             onClick={() => setSwapOpen(false)}
           />
           {/* Sheet */}
-          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-2xl border-t border-ink/[0.08] bg-bg-secondary shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-ink/[0.06]">
-              <div>
-                <span className="text-sm font-semibold text-ink">Trade</span>
-              </div>
+          <div className="trade-root absolute inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-2xl border-t border-white/[0.08] bg-[#0c0d11] shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+              <span className="text-sm font-semibold text-white">Trade {symbol}</span>
               <button
                 onClick={() => setSwapOpen(false)}
-                className="flex items-center gap-1 text-xs text-ink/50 hover:text-ink transition-colors"
+                className="flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
                 Close

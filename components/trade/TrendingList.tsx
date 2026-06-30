@@ -15,10 +15,10 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 // holder/bonding-curve data the market-data API doesn't expose).
 type SubTab = "trending" | "gainers" | "crypto" | "watchlist";
 const SUB_TABS: { id: SubTab; label: string }[] = [
-  { id: "watchlist", label: "Watchlist" },
-  { id: "crypto", label: "Crypto" },
   { id: "trending", label: "Trending" },
   { id: "gainers", label: "Gainers" },
+  { id: "crypto", label: "Crypto" },
+  { id: "watchlist", label: "Watchlist" },
 ];
 
 // Symbols that count as "Crypto" (established majors) vs memecoins.
@@ -144,17 +144,17 @@ export function TrendingList({
   return (
     <div className="flex flex-col h-full">
       {/* Header: sub-tabs (search now lives in the page's top-center navbar) */}
-      <div className="px-4 pt-4 pb-2 border-b border-ink/[0.06]">
+      <div className="px-3 pt-3 pb-2 border-b border-white/[0.06]">
         <div className="flex items-center gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
           {SUB_TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => onTab(t.id)}
               className={cn(
-                "shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all whitespace-nowrap",
+                "shrink-0 px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all whitespace-nowrap",
                 subTab === t.id
-                  ? "text-accent-indigo bg-accent-indigo/10 border border-accent-indigo/30"
-                  : "text-ink/40 hover:text-ink/70 border border-transparent"
+                  ? "text-white bg-white/[0.08]"
+                  : "text-white/40 hover:text-white/70"
               )}
             >
               {t.label}
@@ -166,7 +166,7 @@ export function TrendingList({
       {/* Token list */}
       <div className="flex-1 overflow-y-auto">
         {pageTokens.length === 0 && (
-          <div className="px-4 py-8 text-center text-xs text-ink/30">
+          <div className="px-4 py-8 text-center text-xs text-white/30">
             {subTab === "watchlist"
               ? "No tokens watched yet — tap the ☆ on any token to add it."
               : "No tokens found"}
@@ -183,28 +183,28 @@ export function TrendingList({
               key={`${token.address ?? ""}-${rank}`}
               href={`/trade/${token.address}`}
               className={cn(
-                "group flex items-center gap-3 px-4 py-3 hover:bg-ink/[0.04] transition-colors border-b border-ink/[0.03] cursor-pointer",
-                isActive && "bg-accent-indigo/[0.06] border-l-2 border-l-accent-indigo"
+                "group flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/[0.04] transition-colors border-b border-white/[0.03] cursor-pointer",
+                isActive && "bg-[#16c784]/[0.08] border-l-2 border-l-[#16c784]"
               )}
             >
-              {/* Token logo (no rank circles) */}
+              {/* Token logo */}
               <div className="relative shrink-0">
                 {token.logoURI ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={token.logoURI}
                     alt={token.symbol}
-                    className="w-8 h-8 rounded-full"
+                    className="w-8 h-8 rounded-full ring-1 ring-white/10"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
                   />
                 ) : (
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white/10"
                     style={{
-                      background: `${token.color ?? "#f5c518"}20`,
-                      color: token.color ?? "#f5c518",
+                      background: `${token.color ?? "#16c784"}20`,
+                      color: token.color ?? "#16c784",
                     }}
                   >
                     {token.symbol?.[0]}
@@ -215,21 +215,21 @@ export function TrendingList({
               {/* Identity + price (left), MC + change (right) */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-ink truncate">
+                  <span className="text-xs font-bold text-white truncate">
                     {token.symbol}
                   </span>
-                  <span className="text-[11px] font-mono text-ink/70 shrink-0">
-                    {formatNum(token.marketCap ?? 0)}
+                  <span className="text-[11px] font-mono text-white/70 shrink-0">
+                    {formatNum(token.marketCap ?? 0)} MC
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <span className="text-[11px] text-ink/40 truncate">
-                    {token.name} · {formatPrice(token.price)}
+                  <span className="text-[11px] text-white/40 truncate">
+                    {formatPrice(token.price)}
                   </span>
                   <span
                     className={cn(
                       "text-[11px] font-semibold flex items-center gap-0.5 shrink-0",
-                      isPositive ? "text-accent-green" : "text-red-400"
+                      isPositive ? "text-[#16c784]" : "text-[#f6465d]"
                     )}
                   >
                     {isPositive ? (
@@ -252,8 +252,8 @@ export function TrendingList({
                 className={cn(
                   "shrink-0 transition-colors",
                   watched
-                    ? "text-accent-indigo"
-                    : "text-ink/15 group-hover:text-ink/40 hover:!text-accent-indigo"
+                    ? "text-[#16c784]"
+                    : "text-white/15 group-hover:text-white/40 hover:!text-[#16c784]"
                 )}
                 title={watched ? "Remove from watchlist" : "Add to watchlist"}
               >
@@ -266,22 +266,22 @@ export function TrendingList({
 
       {/* Pagination — 15 per page, last page may hold fewer. */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-t border-ink/[0.06] shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-t border-white/[0.06] shrink-0">
           <button
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={safePage === 0}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-ink/60 border border-ink/10 rounded-md hover:text-ink hover:border-ink/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-ink/60 disabled:hover:border-ink/10"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-white/60 border border-white/10 rounded-md hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-white/60 disabled:hover:border-white/10"
           >
             <ChevronLeft className="w-3 h-3" />
             Prev
           </button>
-          <span className="text-[11px] font-mono text-ink/40">
+          <span className="text-[11px] font-mono text-white/40">
             {safePage + 1} / {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={safePage >= totalPages - 1}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-ink/60 border border-ink/10 rounded-md hover:text-ink hover:border-ink/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-ink/60 disabled:hover:border-ink/10"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-white/60 border border-white/10 rounded-md hover:text-white hover:border-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-white/60 disabled:hover:border-white/10"
           >
             Next
             <ChevronRight className="w-3 h-3" />

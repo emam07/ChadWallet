@@ -16,8 +16,8 @@ interface SwapPanelProps {
 
 const SOL_ADDRESS = "So11111111111111111111111111111111111111112";
 const SLIPPAGE_OPTIONS = [0.5, 1, 2, 5];
-// USD quick-amounts replace the old SOL-denominated chips.
-const USD_AMOUNTS = [10, 100, 500, 1000];
+// USD quick-amounts matching the reference preset row.
+const USD_AMOUNTS = [0, 100, 200, 500, 1000];
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -41,9 +41,9 @@ function formatUsd(n: number) {
 function PerfChip({ label, value }: { label: string; value: number }) {
   const positive = value >= 0;
   return (
-    <div className="flex flex-col items-center gap-0.5 flex-1 rounded-lg bg-ink/[0.04] border border-ink/[0.06] py-1.5">
-      <span className="text-[9px] uppercase tracking-wide text-ink/35">{label}</span>
-      <span className={cn("text-[11px] font-semibold font-mono", positive ? "text-accent-green" : "text-red-400")}>
+    <div className="flex flex-col items-center gap-0.5 flex-1 rounded-lg bg-white/[0.04] border border-white/[0.06] py-1.5">
+      <span className="text-[9px] uppercase tracking-wide text-white/35">{label}</span>
+      <span className={cn("text-[11px] font-semibold font-mono", positive ? "text-[#16c784]" : "text-[#f6465d]")}>
         {positive ? "+" : ""}
         {value.toFixed(2)}%
       </span>
@@ -59,7 +59,7 @@ export function SwapPanel({
   onLogin,
 }: SwapPanelProps) {
   const [mode, setMode] = useState<"buy" | "sell">("buy");
-  // Input is now a USD amount for both buy and sell.
+  // Input is a USD amount for both buy and sell.
   const [usdAmount, setUsdAmount] = useState("");
   const [slippage, setSlippage] = useState(1);
   const [showSlippage, setShowSlippage] = useState(false);
@@ -131,7 +131,7 @@ export function SwapPanel({
       }
 
       setQuote({
-        outAmount: estOut.toFixed(mode === "buy" ? 4 : 4),
+        outAmount: estOut.toFixed(4),
         priceImpact,
       });
       setLoadingQuote(false);
@@ -153,17 +153,18 @@ export function SwapPanel({
   const outputAmount = quote?.outAmount ?? "";
   const priceImpact = quote?.priceImpact ?? 0;
   const hasOrder = parseFloat(usdAmount) > 0 && !!quote;
+  const displayAmount = usdAmount === "" ? "0" : usdAmount;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Buy / Sell Toggle */}
-      <div className="p-4 border-b border-ink/[0.06]">
-        <div className="flex rounded-lg bg-ink/[0.04] p-0.5 mb-4">
+      <div className="p-4 border-b border-white/[0.06]">
+        <div className="flex rounded-lg bg-white/[0.05] p-0.5 mb-4">
           <button
             onClick={() => setMode("buy")}
             className={cn(
               "flex-1 py-2 text-sm font-semibold rounded-md transition-all",
-              mode === "buy" ? "bg-accent-green text-black" : "text-ink/50 hover:text-ink"
+              mode === "buy" ? "bg-[#16c784] text-black" : "text-white/50 hover:text-white"
             )}
           >
             Buy
@@ -172,29 +173,29 @@ export function SwapPanel({
             onClick={() => setMode("sell")}
             className={cn(
               "flex-1 py-2 text-sm font-semibold rounded-md transition-all",
-              mode === "sell" ? "bg-red-500 text-ink" : "text-ink/50 hover:text-ink"
+              mode === "sell" ? "bg-[#f6465d] text-white" : "text-white/50 hover:text-white"
             )}
           >
             Sell
           </button>
         </div>
 
-        {/* Single large USD input */}
-        <div className="bg-ink/[0.04] rounded-xl px-3 py-3 border border-ink/[0.06] mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-ink/40">$</span>
+        {/* Big amount display */}
+        <div className="text-center mb-3">
+          <div className="flex items-center justify-center gap-1">
+            <span className="text-3xl font-bold text-white/40">$</span>
             <input
               type="number"
               inputMode="decimal"
               placeholder="0"
               value={usdAmount}
               onChange={(e) => setUsdAmount(e.target.value)}
-              className="flex-1 min-w-0 bg-transparent text-2xl font-bold text-ink placeholder-ink/20 focus:outline-none"
+              className="w-full max-w-[180px] bg-transparent text-4xl font-bold text-white placeholder-white/25 focus:outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              aria-label="Amount in USD"
             />
-            <span className="text-xs text-ink/30 shrink-0">USD</span>
           </div>
           {outputAmount && (
-            <div className="mt-1.5 text-[11px] text-ink/40">
+            <div className="mt-1 text-[11px] text-white/40">
               {loadingQuote ? (
                 <span className="animate-pulse">Getting quote…</span>
               ) : (
@@ -204,13 +205,13 @@ export function SwapPanel({
           )}
         </div>
 
-        {/* USD quick-amounts + slippage gear */}
+        {/* Preset amount row + slippage gear */}
         <div className="flex gap-1.5 mb-2">
           {USD_AMOUNTS.map((amt) => (
             <button
               key={amt}
-              onClick={() => setUsdAmount(String(amt))}
-              className="flex-1 py-1.5 text-[11px] rounded-md bg-ink/[0.06] text-ink/50 hover:text-ink hover:bg-ink/10 transition-colors"
+              onClick={() => setUsdAmount(amt === 0 ? "" : String(amt))}
+              className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-white/[0.05] text-white/55 hover:text-white hover:bg-white/[0.1] transition-colors"
             >
               ${amt}
             </button>
@@ -220,8 +221,8 @@ export function SwapPanel({
             className={cn(
               "px-2 rounded-md border transition-all",
               showSlippage
-                ? "border-accent-indigo/50 text-accent-indigo"
-                : "border-ink/10 text-ink/40 hover:text-ink hover:border-ink/20"
+                ? "border-[#16c784]/50 text-[#16c784]"
+                : "border-white/10 text-white/40 hover:text-white hover:border-white/20"
             )}
             title="Slippage"
           >
@@ -231,7 +232,7 @@ export function SwapPanel({
 
         {showSlippage && (
           <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-[10px] text-ink/40 mr-1">Slippage</span>
+            <span className="text-[10px] text-white/40 mr-1">Slippage</span>
             {SLIPPAGE_OPTIONS.map((s) => (
               <button
                 key={s}
@@ -242,8 +243,8 @@ export function SwapPanel({
                 className={cn(
                   "flex-1 py-1 text-[11px] rounded-md border transition-all",
                   slippage === s
-                    ? "border-accent-indigo/50 bg-accent-indigo/10 text-accent-indigo"
-                    : "border-ink/10 text-ink/50 hover:border-ink/20 hover:text-ink"
+                    ? "border-[#16c784]/50 bg-[#16c784]/10 text-[#16c784]"
+                    : "border-white/10 text-white/50 hover:border-white/20 hover:text-white"
                 )}
               >
                 {s}%
@@ -253,11 +254,9 @@ export function SwapPanel({
         )}
 
         {/* Available balance line — honest: on-chain reads not wired yet. */}
-        {userLoggedIn && (
-          <div className="text-[11px] text-ink/30 mb-3">
-            Wallet balance unavailable (on-chain reads not enabled)
-          </div>
-        )}
+        <div className="text-[11px] text-white/35 mb-3 text-center">
+          $0 available
+        </div>
 
         {/* Price impact warning */}
         {priceImpact > 2 && (
@@ -271,7 +270,7 @@ export function SwapPanel({
         {!userLoggedIn ? (
           <button
             onClick={onLogin}
-            className="w-full py-3 rounded-xl font-semibold text-sm bg-ink/[0.06] border border-ink/10 text-ink/70 hover:bg-ink/[0.1] hover:text-ink transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl font-semibold text-sm bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/[0.1] hover:text-white transition-all flex items-center justify-center gap-2"
           >
             <Wallet className="w-4 h-4" />
             Connect Wallet to Trade
@@ -283,15 +282,15 @@ export function SwapPanel({
             className={cn(
               "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
               !hasOrder
-                ? "bg-ink/[0.06] text-ink/30 cursor-not-allowed"
+                ? "bg-white/[0.06] text-white/30 cursor-not-allowed"
                 : mode === "buy"
-                ? "bg-accent-green text-black hover:bg-accent-green/90 hover:shadow-glow-green"
-                : "bg-red-500 text-ink hover:bg-red-500/90"
+                ? "bg-[#16c784] text-black hover:bg-[#16c784]/90"
+                : "bg-[#f6465d] text-white hover:bg-[#f6465d]/90"
             )}
           >
             <Zap className="w-4 h-4" />
             {!hasOrder
-              ? "Enter an amount"
+              ? `${mode === "buy" ? "Buy" : "Sell"} ${symbol}`
               : mode === "buy"
               ? `Buy ${symbol}`
               : `Sell ${symbol}`}
@@ -308,20 +307,20 @@ export function SwapPanel({
 
         {/* Order review — built from the real Jupiter quote. */}
         {userLoggedIn && reviewing && hasOrder && (
-          <div className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.04] p-3 text-xs space-y-1.5">
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs space-y-1.5">
             <div className="flex justify-between">
-              <span className="text-ink/40">You pay</span>
-              <span className="font-mono text-ink">${usdAmount}</span>
+              <span className="text-white/40">You pay</span>
+              <span className="font-mono text-white">${displayAmount}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-ink/40">You receive (est.)</span>
-              <span className="font-mono text-ink">~{outputAmount} {outputToken}</span>
+              <span className="text-white/40">You receive (est.)</span>
+              <span className="font-mono text-white">~{outputAmount} {outputToken}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-ink/40">Max slippage</span>
-              <span className="font-mono text-ink">{slippage}%</span>
+              <span className="text-white/40">Max slippage</span>
+              <span className="font-mono text-white">{slippage}%</span>
             </div>
-            <p className="text-[10px] text-ink/30 pt-1.5 border-t border-ink/[0.06]">
+            <p className="text-[10px] text-white/30 pt-1.5 border-t border-white/[0.06]">
               Quote locked from the on-chain router. On-chain submission requires
               signing with your embedded wallet — wiring that step is the next
               milestone.
@@ -331,16 +330,16 @@ export function SwapPanel({
       </div>
 
       {/* About {Token} — performance chips + buy/sell pressure */}
-      <div className="p-4 border-b border-ink/[0.06]">
+      <div className="p-4 border-b border-white/[0.06]">
         <button
           onClick={() => setAboutOpen((v) => !v)}
           className="flex items-center justify-between w-full mb-3"
         >
-          <span className="text-xs font-semibold text-ink/60">About {symbol}</span>
+          <span className="text-xs font-semibold text-white/70">About {symbol}</span>
           {aboutOpen ? (
-            <ChevronUp className="w-3.5 h-3.5 text-ink/30" />
+            <ChevronUp className="w-3.5 h-3.5 text-white/30" />
           ) : (
-            <ChevronDown className="w-3.5 h-3.5 text-ink/30" />
+            <ChevronDown className="w-3.5 h-3.5 text-white/30" />
           )}
         </button>
 
@@ -357,18 +356,12 @@ export function SwapPanel({
             {/* Buy / sell pressure (24h transaction counts) */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-accent-green font-medium">{buys.toLocaleString()} buys</span>
-                <span className="text-red-400 font-medium">{sells.toLocaleString()} sells</span>
+                <span className="text-[#16c784] font-semibold">{buys.toLocaleString()} buys</span>
+                <span className="text-white/40 font-mono">{formatUsd(vol24)} vol</span>
+                <span className="text-[#f6465d] font-semibold">{sells.toLocaleString()} sells</span>
               </div>
-              <div className="flex h-1.5 rounded-full overflow-hidden bg-red-400/30">
-                <div
-                  className="bg-accent-green"
-                  style={{ width: `${buyPct}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-ink/30 pt-0.5">
-                <span>24h volume</span>
-                <span className="font-mono text-ink/50">{formatUsd(vol24)}</span>
+              <div className="flex h-1.5 rounded-full overflow-hidden bg-[#f6465d]/40">
+                <div className="bg-[#16c784]" style={{ width: `${buyPct}%` }} />
               </div>
             </div>
           </>
@@ -381,15 +374,15 @@ export function SwapPanel({
       {userLoggedIn && (
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-ink/60">Your Positions</span>
+            <span className="text-xs font-semibold text-white/70">Your positions</span>
             <div className="flex gap-1">
               <button
                 onClick={() => setPositionsTab("open")}
                 className={cn(
                   "px-2 py-0.5 text-[11px] rounded-md transition-all",
                   positionsTab === "open"
-                    ? "bg-accent-indigo/15 text-accent-indigo"
-                    : "text-ink/40 hover:text-ink/70"
+                    ? "bg-white/[0.08] text-white"
+                    : "text-white/40 hover:text-white/70"
                 )}
               >
                 Open
@@ -399,29 +392,29 @@ export function SwapPanel({
                 className={cn(
                   "px-2 py-0.5 text-[11px] rounded-md transition-all",
                   positionsTab === "closed"
-                    ? "bg-accent-indigo/15 text-accent-indigo"
-                    : "text-ink/40 hover:text-ink/70"
+                    ? "bg-white/[0.08] text-white"
+                    : "text-white/40 hover:text-white/70"
                 )}
               >
                 Closed
               </button>
             </div>
           </div>
-          <div className="bg-ink/[0.04] rounded-xl p-6 border border-ink/[0.06] text-center">
-            <Wallet className="w-5 h-5 text-ink/20 mx-auto mb-2" />
-            <p className="text-sm text-ink/50">
+          <div className="bg-white/[0.04] rounded-xl p-6 border border-white/[0.06] text-center">
+            <Wallet className="w-5 h-5 text-white/20 mx-auto mb-2" />
+            <p className="text-sm text-white/50">
               No {positionsTab} {symbol} position
             </p>
-            <p className="text-[11px] text-ink/30 mt-1">
+            <p className="text-[11px] text-white/30 mt-1">
               Positions appear here once on-chain balance reads are enabled.
             </p>
           </div>
         </div>
       )}
 
-      {/* Price reference (kept minimal — Jupiter branding intentionally hidden) */}
+      {/* Price reference (kept minimal — router branding intentionally hidden) */}
       {price > 0 && (
-        <p className="text-[10px] text-ink/20 text-center py-2">
+        <p className="text-[10px] text-white/20 text-center py-2">
           1 {symbol} ≈ ${formatPrice(price)}
         </p>
       )}

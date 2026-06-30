@@ -154,6 +154,50 @@ h1, h2, h3 {
   }
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Trade dashboard — dark "fomo" theme.
+   Scoped under .trade-root so the rest of the app keeps its light theme.
+   The trade components style themselves with explicit dark utility classes;
+   these rules just set the base surface, selection and scrollbar so the whole
+   dashboard reads as one dark canvas like the reference.
+   ────────────────────────────────────────────────────────────────────────── */
+.trade-root {
+  --trade-green: #16c784;
+  --trade-red: #f6465d;
+  background-color: #0a0b0e;
+  color: #e7e9ea;
+  -webkit-font-smoothing: antialiased;
+}
+
+.trade-root ::selection {
+  background: rgba(22, 199, 132, 0.22);
+  color: #ffffff;
+}
+
+.trade-root ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.trade-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.trade-root ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+.trade-root ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Hidden scrollbar for horizontal tab/chip strips inside the dashboard. */
+.trade-root .scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.trade-root .scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes ticker {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }

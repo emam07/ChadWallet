@@ -49,7 +49,7 @@ function walletColor(wallet: string) {
 }
 
 export function TradesFeed({ address }: { address: string }) {
-  // Holders first per the Chad Wallet layout; "Swaps" replaces "Live Trades".
+  // Holders first per the reference layout; "Swaps" replaces "Live Trades".
   const [tab, setTab] = useState<"holders" | "swaps">("swaps");
   const { data } = useSWR(`/api/trades/${address}`, fetcher, {
     refreshInterval: 5000,
@@ -60,14 +60,14 @@ export function TradesFeed({ address }: { address: string }) {
   return (
     <div className="flex flex-col h-full">
       {/* Tabs */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-ink/[0.06]">
+      <div className="flex items-center gap-1 px-4 py-2 border-b border-white/[0.06]">
         <button
           onClick={() => setTab("holders")}
           className={cn(
-            "flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+            "flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
             tab === "holders"
-              ? "bg-ink/10 text-ink"
-              : "text-ink/40 hover:text-ink/70"
+              ? "bg-white/[0.08] text-white"
+              : "text-white/40 hover:text-white/70"
           )}
         >
           <Users className="w-3 h-3" />
@@ -76,17 +76,17 @@ export function TradesFeed({ address }: { address: string }) {
         <button
           onClick={() => setTab("swaps")}
           className={cn(
-            "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+            "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
             tab === "swaps"
-              ? "bg-accent-indigo/15 text-accent-indigo"
-              : "text-ink/40 hover:text-ink/70"
+              ? "bg-white/[0.08] text-white"
+              : "text-white/40 hover:text-white/70"
           )}
         >
           Swaps
         </button>
         {tab === "swaps" && (
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-accent-green">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse" />
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-[#16c784]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#16c784] animate-pulse" />
             Live
           </span>
         )}
@@ -95,7 +95,7 @@ export function TradesFeed({ address }: { address: string }) {
       {/* Swaps table */}
       {tab === "swaps" && (
         <>
-          <div className="grid grid-cols-[1.4fr_0.8fr_1fr_1fr_1fr_0.6fr] px-4 py-1.5 text-[10px] text-ink/25 font-medium border-b border-ink/[0.04]">
+          <div className="grid grid-cols-[1.4fr_0.8fr_1fr_1fr_1fr_0.6fr] px-4 py-1.5 text-[10px] text-white/30 font-medium border-b border-white/[0.04]">
             <span>Trader</span>
             <span>Type</span>
             <span className="text-right">Price</span>
@@ -108,7 +108,7 @@ export function TradesFeed({ address }: { address: string }) {
             {trades.map((trade, i) => (
               <div
                 key={`${trade.txHash}-${i}`}
-                className="grid grid-cols-[1.4fr_0.8fr_1fr_1fr_1fr_0.6fr] items-center px-4 py-2 text-xs border-b border-ink/[0.03] hover:bg-ink/[0.02] transition-colors"
+                className="grid grid-cols-[1.4fr_0.8fr_1fr_1fr_1fr_0.6fr] items-center px-4 py-2 text-xs border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
               >
                 {/* Trader avatar + truncated wallet */}
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -116,42 +116,42 @@ export function TradesFeed({ address }: { address: string }) {
                     className="w-5 h-5 rounded-full shrink-0"
                     style={{ background: walletColor(trade.wallet) }}
                   />
-                  <span className="font-mono text-[11px] text-ink/50 truncate">
+                  <span className="font-mono text-[11px] text-white/50 truncate">
                     {trade.wallet}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   {trade.type === "buy" ? (
-                    <ArrowUpRight className="w-3.5 h-3.5 text-accent-green" />
+                    <ArrowUpRight className="w-3.5 h-3.5 text-[#16c784]" />
                   ) : (
-                    <ArrowDownRight className="w-3.5 h-3.5 text-red-400" />
+                    <ArrowDownRight className="w-3.5 h-3.5 text-[#f6465d]" />
                   )}
                   <span
                     className={cn(
                       "font-semibold text-[11px]",
-                      trade.type === "buy" ? "text-accent-green" : "text-red-400"
+                      trade.type === "buy" ? "text-[#16c784]" : "text-[#f6465d]"
                     )}
                   >
                     {trade.type === "buy" ? "BUY" : "SELL"}
                   </span>
                 </div>
-                <span className="text-right font-mono text-ink/70">
+                <span className="text-right font-mono text-white/70">
                   {formatPrice(trade.price)}
                 </span>
-                <span className="text-right font-mono text-ink/50 text-[11px]">
+                <span className="text-right font-mono text-white/50 text-[11px]">
                   {formatAmount(trade.amount)}
                 </span>
-                <span className="text-right font-mono text-ink/60">
+                <span className="text-right font-mono text-white/60">
                   ${formatAmount(trade.value)}
                 </span>
-                <span className="text-right text-ink/30">
+                <span className="text-right text-white/30">
                   {timeAgo(trade.timestamp)}
                 </span>
               </div>
             ))}
 
             {trades.length === 0 && (
-              <div className="flex items-center justify-center h-32 text-ink/30 text-sm">
+              <div className="flex items-center justify-center h-32 text-white/30 text-sm">
                 Waiting for trades...
               </div>
             )}
@@ -164,9 +164,9 @@ export function TradesFeed({ address }: { address: string }) {
           than fabricating wallets and percentages. */}
       {tab === "holders" && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <Users className="w-6 h-6 text-ink/20 mb-3" />
-          <p className="text-sm text-ink/50">Holder data not available</p>
-          <p className="text-[11px] text-ink/30 mt-1.5 max-w-[240px]">
+          <Users className="w-6 h-6 text-white/20 mb-3" />
+          <p className="text-sm text-white/50">Holder data not available</p>
+          <p className="text-[11px] text-white/30 mt-1.5 max-w-[240px]">
             The current market data tier doesn&apos;t expose holder
             distributions. This tab activates once a holder-aware data source
             (e.g. an indexed RPC) is connected.
