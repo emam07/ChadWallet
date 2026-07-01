@@ -12,10 +12,10 @@ interface Stat {
 }
 
 const stats: Stat[] = [
-  { target: 2_400_000_000, label: "traded", format: (n) => `$${(n / 1_000_000_000).toFixed(1)}B+` },
-  { target: 50_000, label: "traders", format: (n) => `${Math.round(n / 1000)}K+` },
-  { target: 1_000_000, label: "transactions", format: (n) => `${(n / 1_000_000).toFixed(0)}M+` },
-  { target: null, label: "avg swap time", format: () => "", static: "<1s" },
+  { target: 2_400_000_000, label: "Traded", format: (n) => `$${(n / 1_000_000_000).toFixed(1)}B+` },
+  { target: 50_000, label: "Traders", format: (n) => `${Math.round(n / 1000)}K+` },
+  { target: 1_000_000, label: "Transactions", format: (n) => `${(n / 1_000_000).toFixed(0)}M+` },
+  { target: null, label: "Avg Swap Time", format: () => "", static: "<1s" },
 ];
 
 /** Counts from 0 → target with requestAnimationFrame the first time the bar

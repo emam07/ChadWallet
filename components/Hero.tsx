@@ -33,13 +33,13 @@ export default function Hero() {
 
       <div className="hero-content">
         <motion.h1 custom={0} variants={fade} initial="hidden" animate="show">
-          chad wallet
+          ChadWallet
         </motion.h1>
         <motion.p className="hero-sub-bold" custom={1} variants={fade} initial="hidden" animate="show">
-          where degens become legends.
+          Where Degens Become Legends.
         </motion.p>
         <motion.p className="hero-sub-light" custom={2} variants={fade} initial="hidden" animate="show">
-          From memecoins to viral tokens, trade any Solana token in seconds.
+          From Memecoins To Viral Tokens, Trade Any Solana Token In Seconds.
         </motion.p>
         <motion.div className="hero-ctas" custom={3} variants={fade} initial="hidden" animate="show">
           <button
@@ -47,10 +47,10 @@ export default function Hero() {
             onClick={handleStartTrading}
             aria-busy={pendingTrade && !authenticated}
           >
-            {pendingTrade && !authenticated ? "Opening sign in…" : "Start trading"}
+            {pendingTrade && !authenticated ? "Opening Sign In…" : "Start Trading"}
           </button>
           <a className="btn-secondary" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
-            Download app
+            Download App
           </a>
         </motion.div>
       </div>

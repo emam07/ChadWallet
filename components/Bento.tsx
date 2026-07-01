@@ -25,9 +25,9 @@ const cards: Card[] = [
     label: "LEADERBOARD",
     title: (
       <>
-        become a chad,
+        Become A Chad,
         <br />
-        top the leaderboard
+        Top The Leaderboard
       </>
     ),
     shot: leaderboardShot,
@@ -36,35 +36,35 @@ const cards: Card[] = [
   },
   {
     label: "FEED",
-    title: "discover and follow top chads",
+    title: "Discover And Follow Top Chads",
     shot: feedShot,
     alt: "ChadWallet social feed to discover and follow top traders",
     delay: 80,
   },
   {
     label: "ALERTS",
-    title: "real time notifications for what the chads are buying",
+    title: "Real Time Notifications For What The Chads Are Buying",
     shot: alertsShot,
     alt: "ChadWallet real-time feed of trader buys and sells",
     delay: 160,
   },
   {
     label: "EASY ONBOARDING",
-    title: "create an account in an instant",
+    title: "Create An Account In An Instant",
     shot: onboardingShot,
     alt: "ChadWallet onboarding splash screen",
     delay: 40,
   },
   {
     label: "ZERO COMPLEXITY",
-    title: "multichain & gasless",
+    title: "Multichain & Gasless",
     shot: multichainShot,
     alt: "ChadWallet portfolio tracking assets in one place",
     delay: 120,
   },
   {
     label: "ONE CLICK TO BUY",
-    title: "fund with apple pay",
+    title: "Fund With Apple Pay",
     shot: buyShot,
     alt: "ChadWallet deposit screen to fund the account",
     delay: 200,
@@ -75,8 +75,8 @@ export default function Bento() {
   return (
     <section className="bento-section">
       <Reveal>
-        <h2>never miss a flip</h2>
-        <p className="subhead">the only degen-first trading app</p>
+        <h2>Never Miss A Flip</h2>
+        <p className="subhead">The Only Degen-First Trading App</p>
       </Reveal>
 
       <div className="bento-grid">

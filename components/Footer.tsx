@@ -24,7 +24,7 @@ const socials = [
 const links = [
   { label: "Features", href: "#" },
   { label: "Market", href: "#" },
-  { label: "How it Works", href: "#" },
+  { label: "How It Works", href: "#" },
   { label: "Docs", href: "#" },
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
@@ -34,7 +34,7 @@ export default function Footer() {
   return (
     <footer className="footer">
       <div className="footer-top">
-        <span className="nav-logo">chad wallet</span>
+        <span className="nav-logo">ChadWallet</span>
         <div className="social-icons">
           {socials.map((s) => (
             <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}>
@@ -52,7 +52,7 @@ export default function Footer() {
           </a>
         ))}
       </div>
-      <p className="footer-copy">© 2026 Chad Wallet. Built on Solana.</p>
+      <p className="footer-copy">© 2026 ChadWallet. Built On Solana.</p>
     </footer>
   );
 }

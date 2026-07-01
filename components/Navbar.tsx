@@ -83,7 +83,7 @@ function LoginControl({ onAction }: { onAction?: () => void }) {
         size={15}
         className={PRIVY_CONFIGURED && (!ready || (pending && !authenticated)) ? "animate-pulse" : undefined}
       />
-      {pending && !authenticated ? "Opening sign in…" : "Login"}
+      {pending && !authenticated ? "Opening Sign In…" : "Login"}
     </button>
   );
 }
@@ -122,7 +122,7 @@ export default function Navbar() {
     <nav className={`navbar${scrolled ? " scrolled" : ""}`}>
       <a href="/" className="nav-logo" aria-label="ChadWallet home">
         <img src="/logo/dark.png" alt="" className="nav-logo-img" aria-hidden="true" />
-        chad wallet
+        ChadWallet
       </a>
 
       <div className="nav-actions">
