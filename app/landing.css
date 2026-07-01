@@ -103,7 +103,6 @@
   font-weight: 700;
   font-size: 22px;
   letter-spacing: -0.04em;
-  text-transform: lowercase;
   color: var(--heading);
 }
 .landing-root .nav-logo-img {
@@ -210,7 +209,6 @@
   font-weight: 700;
   color: var(--heading);
   letter-spacing: -0.04em;
-  text-transform: lowercase;
   line-height: 0.95;
   margin-bottom: 18px;
 }
@@ -593,7 +591,6 @@
   font-weight: 700;
   color: var(--heading);
   letter-spacing: -0.04em;
-  text-transform: lowercase;
   margin-bottom: 12px;
 }
 .landing-root .cta-section p {
