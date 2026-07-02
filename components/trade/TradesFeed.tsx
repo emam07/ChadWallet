@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import useSWR from "swr";
 import { cn } from "@/lib/utils";
-import { ArrowUpRight, ArrowDownRight, Users } from "lucide-react";
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Users,
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -15,6 +21,44 @@ interface Trade {
   value: number;
   wallet: string;
   timestamp: number;
+}
+
+interface Holder {
+  address: string;
+  owner: string;
+  amount: number;
+  percentage: number;
+  rank: number;
+}
+
+// The holders route returns proper HTTP status codes (403 plan-gated, 429 rate
+// limited, 502 network, …). This fetcher throws on non-2xx so SWR surfaces the
+// failure via `error`, carrying the parsed { error, message } body so the UI can
+// tell the states apart. (The swaps `fetcher` above never throws — swaps have a
+// mock fallback, holders don't.)
+interface HoldersError extends Error {
+  status?: number;
+  info?: { error?: string; message?: string };
+}
+
+async function holdersFetcher(url: string): Promise<{ holders: Holder[] }> {
+  const res = await fetch(url);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(
+      body?.message || "Failed to load holders"
+    ) as HoldersError;
+    err.status = res.status;
+    err.info = body;
+    throw err;
+  }
+  return body as { holders: Holder[] };
+}
+
+// Middle-truncate a Solana address for display, e.g. 7f2Xa...B91k.
+function shortenAddress(a: string) {
+  if (!a || a.length <= 9) return a || "unknown";
+  return `${a.slice(0, 4)}...${a.slice(-4)}`;
 }
 
 function formatPrice(price: number) {
@@ -159,20 +203,148 @@ export function TradesFeed({ address }: { address: string }) {
         </>
       )}
 
-      {/* Holders — BirdEye's market-data tier exposes a holder count but not the
-          full holder distribution, so we show an honest unavailable state rather
-          than fabricating wallets and percentages. */}
-      {tab === "holders" && (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <Users className="w-6 h-6 text-white/20 mb-3" />
-          <p className="text-sm text-white/50">Holder data not available</p>
-          <p className="text-[11px] text-white/30 mt-1.5 max-w-[240px]">
-            The current market data tier doesn&apos;t expose holder
-            distributions. This tab activates once a holder-aware data source
-            (e.g. an indexed RPC) is connected.
-          </p>
-        </div>
-      )}
+      {/* Holders — live top-holder distribution from BirdEye. Mounted only while
+          the tab is active so its request fires on demand (and SWR serves the
+          cached result instantly when the user switches back). */}
+      {tab === "holders" && <HoldersPanel address={address} />}
     </div>
   );
 }
+
+// Isolated + memoized so the 5s swaps poll re-rendering the parent doesn't churn
+// the holders subtree. Only rendered while the Holders tab is active, so the SWR
+// request runs on demand rather than on mount of the trade page.
+const HoldersPanel = memo(function HoldersPanel({ address }: { address: string }) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<
+    { holders: Holder[] },
+    HoldersError
+  >(`/api/holders/${address}`, holdersFetcher, {
+    revalidateOnFocus: false, // holder distribution is slow-moving
+    dedupingInterval: 30_000, // dedupe rapid tab toggles
+    shouldRetryOnError: false, // we offer an explicit Retry instead
+    keepPreviousData: true,
+  });
+
+  const holders = useMemo(() => data?.holders ?? [], [data]);
+
+  // Loading skeletons (first load only — keepPreviousData covers revalidations).
+  if (isLoading && !data) {
+    return (
+      <div className="flex-1 overflow-hidden" aria-busy="true" aria-live="polite">
+        <span className="sr-only">Loading holders…</span>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.03]"
+          >
+            <div className="w-4 h-3 rounded bg-white/[0.06] animate-pulse" />
+            <div className="w-5 h-5 rounded-full bg-white/[0.06] animate-pulse shrink-0" />
+            <div className="h-3 flex-1 max-w-[120px] rounded bg-white/[0.06] animate-pulse" />
+            <div className="ml-auto h-3 w-14 rounded bg-white/[0.06] animate-pulse" />
+            <div className="h-3 w-12 rounded bg-white/[0.06] animate-pulse" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Error / unavailable states. Transient failures (rate limited, network) get a
+  // Retry button; plan/feature limits don't (retrying won't help).
+  if (error) {
+    const code = error.info?.error;
+    const transient = code === "rate_limited" || code === "network_error";
+    const message =
+      error.info?.message || "Something went wrong loading holders.";
+    return (
+      <div
+        role="alert"
+        className="flex-1 flex flex-col items-center justify-center px-6 text-center"
+      >
+        <AlertTriangle className="w-6 h-6 text-white/20 mb-3" />
+        <p className="text-sm text-white/50 max-w-[260px]">{message}</p>
+        {transient && (
+          <button
+            type="button"
+            onClick={() => mutate()}
+            disabled={isValidating}
+            className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.1] transition-all disabled:opacity-50"
+          >
+            <RefreshCw
+              className={cn("w-3.5 h-3.5", isValidating && "animate-spin")}
+            />
+            {isValidating ? "Retrying…" : "Retry"}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Genuine empty state — BirdEye returned zero holders.
+  if (holders.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+        <Users className="w-6 h-6 text-white/20 mb-3" />
+        <p className="text-sm text-white/50">No holders found for this token.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto" aria-busy={isValidating}>
+      <table className="w-full text-xs border-collapse">
+        <caption className="sr-only">Top token holders</caption>
+        <thead className="sticky top-0 z-10 bg-[#0a0b0e]">
+          <tr className="text-[10px] text-white/30 border-b border-white/[0.04]">
+            <th scope="col" className="w-10 text-left font-medium px-4 py-1.5">
+              #
+            </th>
+            <th scope="col" className="text-left font-medium py-1.5">
+              Wallet
+            </th>
+            <th scope="col" className="text-right font-medium py-1.5">
+              Amount
+            </th>
+            <th scope="col" className="text-right font-medium px-4 py-1.5">
+              Ownership
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {holders.map((h) => {
+            const wallet = h.owner || h.address;
+            return (
+              <tr
+                key={wallet}
+                className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
+              >
+                <td className="px-4 py-2 text-white/30 tabular-nums">
+                  {h.rank}
+                </td>
+                <td className="py-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className="w-5 h-5 rounded-full shrink-0"
+                      style={{ background: walletColor(wallet) }}
+                    />
+                    <span
+                      className="font-mono text-[11px] text-white/50 truncate"
+                      title={wallet}
+                    >
+                      {shortenAddress(wallet)}
+                    </span>
+                  </div>
+                </td>
+                <td className="text-right font-mono text-white/60 py-2">
+                  {formatAmount(h.amount)}
+                </td>
+                <td className="text-right font-mono text-white/70 px-4 py-2 tabular-nums">
+                  {h.percentage > 0 ? `${h.percentage.toFixed(2)}%` : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+});

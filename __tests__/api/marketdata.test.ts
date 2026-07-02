@@ -267,6 +267,128 @@ describe('GET /api/ohlcv/[address] (BirdEye path)', () => {
   });
 });
 
+/** Queue one non-2xx (error) response for the next fetch() call. */
+function mockErrorOnce(status: number) {
+  (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    ok: false,
+    status,
+    json: async () => ({}),
+  });
+}
+
+/** A BirdEye v3 holder response (data.items). */
+function holderRow(over: Record<string, unknown> = {}) {
+  return {
+    owner: 'AbCdEfGhIjKlMnOpQrStUvWxYz123456',
+    token_account: 'TokenAcct1111111111111111111111111111111111',
+    ui_amount: 1000,
+    ...over,
+  };
+}
+
+describe('lib/birdeye getTokenHolders', () => {
+  it('maps holders, deriving rank and ownership % from supply', async () => {
+    // getTokenHolders fires the holder request first, then the supply (overview).
+    mockJsonOnce({
+      data: { items: [holderRow({ ui_amount: 250 }), holderRow({ owner: 'W2', ui_amount: 100 })] },
+    });
+    mockJsonOnce(overview({ circulatingSupply: 1000 }));
+    const { getTokenHolders } = await import('@/lib/birdeye');
+    const result = await getTokenHolders(VALID_ADDRESS);
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.holders).toHaveLength(2);
+    expect(result.holders[0]).toMatchObject({ rank: 1, amount: 250, percentage: 25 });
+    expect(result.holders[1]).toMatchObject({ rank: 2, owner: 'W2', percentage: 10 });
+  });
+
+  it('reports unauthorized on 401/403 (plan-gated)', async () => {
+    mockErrorOnce(403);
+    mockJsonOnce(overview()); // concurrent supply fetch
+    const { getTokenHolders } = await import('@/lib/birdeye');
+    expect((await getTokenHolders(VALID_ADDRESS)).status).toBe('unauthorized');
+  });
+
+  it('reports rate_limited on 429', async () => {
+    mockErrorOnce(429);
+    mockJsonOnce(overview());
+    const { getTokenHolders } = await import('@/lib/birdeye');
+    expect((await getTokenHolders(VALID_ADDRESS)).status).toBe('rate_limited');
+  });
+
+  it('reports network_error on a thrown fetch', async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('network'));
+    mockJsonOnce(overview());
+    const { getTokenHolders } = await import('@/lib/birdeye');
+    expect((await getTokenHolders(VALID_ADDRESS)).status).toBe('network_error');
+  });
+
+  it('reports unauthorized when no API key is configured (no fetch)', async () => {
+    vi.stubEnv('BIRDEYE_API_KEY', 'your-birdeye-api-key-here');
+    const { getTokenHolders } = await import('@/lib/birdeye');
+    expect((await getTokenHolders(VALID_ADDRESS)).status).toBe('unauthorized');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns ok with an empty list when BirdEye genuinely has no holders', async () => {
+    mockJsonOnce({ data: { items: [] } });
+    mockJsonOnce(overview());
+    const { getTokenHolders } = await import('@/lib/birdeye');
+    const result = await getTokenHolders(VALID_ADDRESS);
+    expect(result).toEqual({ status: 'ok', holders: [] });
+  });
+});
+
+describe('GET /api/holders/[address]', () => {
+  it('rejects an invalid token address with 400', async () => {
+    const { GET } = await import('@/app/api/holders/[address]/route');
+    const res = await GET(new Request('http://localhost/api/holders/bad'), params('not-valid'));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('invalid_token');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns holders on the success path', async () => {
+    mockJsonOnce({ data: { items: [holderRow()] } });
+    mockJsonOnce(overview({ circulatingSupply: 1000 }));
+    const { GET } = await import('@/app/api/holders/[address]/route');
+    const res = await GET(
+      new Request(`http://localhost/api/holders/${VALID_ADDRESS}`),
+      params(VALID_ADDRESS)
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.holders).toHaveLength(1);
+    expect(data.holders[0].rank).toBe(1);
+  });
+
+  it('maps a plan-gated 403 to the plan message', async () => {
+    mockErrorOnce(403);
+    mockJsonOnce(overview());
+    const { GET } = await import('@/app/api/holders/[address]/route');
+    const res = await GET(
+      new Request(`http://localhost/api/holders/${VALID_ADDRESS}`),
+      params(VALID_ADDRESS)
+    );
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe('plan_unavailable');
+    expect(data.message).toMatch(/current API plan/);
+  });
+
+  it('maps a 429 to a rate-limited response', async () => {
+    mockErrorOnce(429);
+    mockJsonOnce(overview());
+    const { GET } = await import('@/app/api/holders/[address]/route');
+    const res = await GET(
+      new Request(`http://localhost/api/holders/${VALID_ADDRESS}`),
+      params(VALID_ADDRESS)
+    );
+    expect(res.status).toBe(429);
+    expect((await res.json()).error).toBe('rate_limited');
+  });
+});
+
 /** A BirdEye v3 search response (data.items[].result[]). */
 function searchResponse(rows: Array<Record<string, unknown>>) {
   return { data: { items: [{ type: 'token', result: rows }] } };

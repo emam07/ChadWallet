@@ -16,13 +16,28 @@ export const BIRDEYE_API = "https://public-api.birdeye.so";
 const PLACEHOLDER_KEY = "your-birdeye-api-key-here";
 
 /**
- * GET a BirdEye endpoint and return the parsed body, or null on any failure
- * (including a missing/placeholder API key). Never throws — callers branch on
- * null to use mock data. All requests are Solana-scoped via the `x-chain` header.
+ * Low-level BirdEye request that preserves the HTTP status and the reason for a
+ * failure. Most helpers only care about "did it work" and use `birdeyeFetch`
+ * below; the holders helper needs the status to tell a plan-gated 401/403 apart
+ * from a 429 rate limit or a network drop. Never throws.
  */
-async function birdeyeFetch<T>(path: string, revalidate: number): Promise<T | null> {
+interface BirdeyeResult<T> {
+  ok: boolean;
+  /** HTTP status, or 0 for failures that never reached a response. */
+  status: number;
+  /** Set for the two non-HTTP failure modes so callers can differentiate them. */
+  reason?: "no_key" | "network";
+  data: T | null;
+}
+
+async function birdeyeRequest<T>(
+  path: string,
+  revalidate: number
+): Promise<BirdeyeResult<T>> {
   const apiKey = process.env.BIRDEYE_API_KEY;
-  if (!apiKey || apiKey === PLACEHOLDER_KEY) return null;
+  if (!apiKey || apiKey === PLACEHOLDER_KEY) {
+    return { ok: false, status: 0, reason: "no_key", data: null };
+  }
 
   try {
     const res = await fetch(`${BIRDEYE_API}${path}`, {
@@ -33,11 +48,21 @@ async function birdeyeFetch<T>(path: string, revalidate: number): Promise<T | nu
       },
       next: { revalidate },
     });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
+    if (!res.ok) return { ok: false, status: res.status, data: null };
+    return { ok: true, status: res.status, data: (await res.json()) as T };
   } catch {
-    return null;
+    return { ok: false, status: 0, reason: "network", data: null };
   }
+}
+
+/**
+ * GET a BirdEye endpoint and return the parsed body, or null on any failure
+ * (including a missing/placeholder API key). Never throws — callers branch on
+ * null to use mock data. All requests are Solana-scoped via the `x-chain` header.
+ */
+async function birdeyeFetch<T>(path: string, revalidate: number): Promise<T | null> {
+  const res = await birdeyeRequest<T>(path, revalidate);
+  return res.ok ? res.data : null;
 }
 
 // ── Token overview ───────────────────────────────────────────────────────────
@@ -354,4 +379,114 @@ export async function getTokenTrades(address: string): Promise<TokenTrade[]> {
         t.price > 0 &&
         Number.isFinite(t.timestamp)
     );
+}
+
+// ── Holders ──────────────────────────────────────────────────────────────────
+
+/** A single normalized holder row for the Holders tab. */
+export interface TokenHolder {
+  /** The SPL token account address holding the balance. */
+  address: string;
+  /** The wallet that owns that token account. */
+  owner: string;
+  /** Human-readable balance held (ui amount). */
+  amount: number;
+  /** Ownership as a % of the token's supply (0 when supply is unknown). */
+  percentage: number;
+  /** 1-based position in the ranking (largest holder first). */
+  rank: number;
+}
+
+/**
+ * Discriminated result of a holders lookup. getTokenHolders never throws;
+ * callers branch on `status` to render the matching state. `"ok"` with an empty
+ * array means BirdEye genuinely returned zero holders — that's distinct from the
+ * failure statuses below, which the API route maps to specific HTTP codes.
+ */
+export type HoldersResult =
+  | { status: "ok"; holders: TokenHolder[] }
+  /** 401/403 or no key — the holder endpoint isn't on the current plan. */
+  | { status: "unauthorized" }
+  /** 429 — hit BirdEye's rate limit. */
+  | { status: "rate_limited" }
+  /** 2xx but the feature is off, or a non-holder-shaped body. */
+  | { status: "unavailable" }
+  /** Network drop or 5xx — transient, worth retrying. */
+  | { status: "network_error" };
+
+interface HoldersResponse {
+  success?: boolean;
+  data?: {
+    items?: Array<Record<string, unknown>> | null;
+  } | null;
+}
+
+/**
+ * Circulating (or total) supply for a token, used to derive ownership %.
+ * Reuses the overview endpoint; returns 0 when unavailable so percentages
+ * degrade to "—" rather than showing a wrong number.
+ */
+async function getTokenSupply(address: string): Promise<number> {
+  const res = await birdeyeFetch<{ data?: Record<string, unknown> | null }>(
+    `/defi/token_overview?address=${address}`,
+    30
+  );
+  const d = res?.data;
+  if (!d) return 0;
+  return num(d.circulatingSupply ?? d.supply ?? d.totalSupply);
+}
+
+/**
+ * Top holders for a token via BirdEye's v3 holder-distribution endpoint (gated
+ * to higher API tiers). Returns a discriminated result rather than []/null so
+ * the UI can distinguish "no holders" from "plan doesn't cover this" / "rate
+ * limited" / "network error". Ownership % is derived from the token's supply
+ * (fetched concurrently) when the endpoint doesn't provide it.
+ */
+export async function getTokenHolders(
+  address: string,
+  limit = 100
+): Promise<HoldersResult> {
+  const [res, supply] = await Promise.all([
+    birdeyeRequest<HoldersResponse>(
+      `/defi/v3/token/holder?address=${address}&offset=0&limit=${limit}`,
+      30
+    ),
+    getTokenSupply(address),
+  ]);
+
+  if (!res.ok) {
+    if (res.reason === "network") return { status: "network_error" };
+    if (res.reason === "no_key") return { status: "unauthorized" };
+    if (res.status === 401 || res.status === 403) return { status: "unauthorized" };
+    if (res.status === 429) return { status: "rate_limited" };
+    if (res.status >= 500) return { status: "network_error" };
+    return { status: "unavailable" };
+  }
+
+  // Some plans answer 200 with `{ success: false }` when the feature is off.
+  if (res.data?.success === false) return { status: "unauthorized" };
+
+  const items = res.data?.data?.items;
+  if (!items) return { status: "unavailable" };
+
+  const holders = items
+    .map((h, i): TokenHolder => {
+      const amount = num(h.ui_amount ?? h.uiAmount ?? h.amount);
+      // Prefer a percentage from BirdEye if present; otherwise derive it.
+      const pctRaw = h.percentage ?? h.percent;
+      const percentage =
+        pctRaw != null ? num(pctRaw) : supply > 0 ? (amount / supply) * 100 : 0;
+      return {
+        address: (h.token_account as string) || (h.address as string) || "",
+        owner: (h.owner as string) || (h.wallet as string) || "",
+        amount,
+        percentage,
+        rank: i + 1,
+      };
+    })
+    // Keep only rows we can actually attribute to a wallet/account.
+    .filter((h) => h.owner || h.address);
+
+  return { status: "ok", holders };
 }
